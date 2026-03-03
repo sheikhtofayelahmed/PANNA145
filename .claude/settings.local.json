@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \":*)",
+      "Bash(node /tmp/savefiles2.js)",
+      "Bash(node -e \"const s = ''D:\\\\\\\\NOSHIB MOD\\\\\\\\src\\\\\\\\app\\\\\\\\layout.js''; console.log\\(s.includes\\(''src\\\\\\\\app\\\\\\\\layout.js''\\)\\); console.log\\(s.includes\\(''src\\\\x5Capp\\\\x5Clayout.js''\\)\\);\")",
+      "Bash(node -e \"console.log\\(process.cwd\\(\\)\\)\")",
+      "Bash(node /tmp/saveall.js)",
+      "Bash(node --no-experimental-strip-types /tmp/saveall.js)",
+      "Bash(node --version)"
+    ]
+  }
+}
