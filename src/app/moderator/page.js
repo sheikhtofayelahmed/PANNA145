@@ -1,9 +1,16 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import VisitorGameEntry from "@/components/VisitorGameEntry";
 
 export default function ModeratorPage() {
   const [tab, setTab] = useState("visitor");
+  const [moderatorId, setModeratorId] = useState("");
+
+  useEffect(() => {
+    fetch("/api/moderator-session")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) setModeratorId(d.moderatorId); });
+  }, []);
 
   const tabs = [
     { key: "visitor", label: "Visitor Entry" },
@@ -26,7 +33,7 @@ export default function ModeratorPage() {
         ))}
       </div>
 
-      {tab === "visitor" && <VisitorGameEntry />}
+      {tab === "visitor" && <VisitorGameEntry moderatorId={moderatorId} />}
     </div>
   );
 }

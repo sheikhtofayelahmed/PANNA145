@@ -40,9 +40,15 @@ function printAgentTable({ agentName, latestDate, gameNames, dataMap, totPanna, 
       <div style="font-family:monospace;font-weight:600;margin-bottom:6px;">${fmt(rawTotWin)}</div>
     </div>
     <div style="border-top:1px solid #ccc;padding-top:5px;">
-      <div style="font-weight:bold;font-size:14px;color:${plColor};">${fmt(Math.abs(totPL))}</div>
-      <div style="font-size:11px;font-weight:bold;color:${plColor};">${totTag}</div>
-      ${applyWinDisc ? `<div style="font-size:10px;color:#1d4ed8;">W.disc</div>` : ""}
+      <div style="font-family:monospace;font-size:11px;color:#555;text-align:right;padding-right:2px;">${fmt(totNetGame)}</div>
+      <div style="font-family:monospace;font-size:11px;color:#555;display:flex;justify-content:space-between;padding-right:2px;">
+        <span>&#8722;</span><span>${fmt(rawTotWin)}</span>
+      </div>
+      <div style="border-top:2px solid #333;margin-top:3px;padding-top:4px;text-align:center;">
+        <div style="font-weight:bold;font-size:14px;color:${plColor};">${fmt(Math.abs(totPL))}</div>
+        <div style="font-size:11px;font-weight:bold;color:${plColor};">${totTag}</div>
+        ${applyWinDisc ? `<div style="font-size:10px;color:#1d4ed8;">W.disc</div>` : ""}
+      </div>
     </div>`;
 
   const dataRows = gameNames.map((gn, i) => {
@@ -323,13 +329,19 @@ function AgentTable({ agentId, agentName, rows, agent, gameNames }) {
                         <div className="font-mono font-semibold text-sm">{fmt(rawTotWin)}</div>
                       </div>
                       <div className="border-t border-gray-300 pt-1.5">
-                        <div className={`font-bold text-sm ${totTag === "BANKER" ? "text-green-700" : "text-red-600"}`}>
-                          {fmt(Math.abs(totPL))}
+                        <div className="font-mono text-xs text-gray-500 text-right pr-0.5">{fmt(totNetGame)}</div>
+                        <div className="font-mono text-xs text-gray-500 flex justify-between pr-0.5">
+                          <span>−</span><span>{fmt(rawTotWin)}</span>
                         </div>
-                        <div className={`text-xs font-bold tracking-wider ${totTag === "BANKER" ? "text-green-600" : "text-red-500"}`}>
-                          {totTag}
+                        <div className="border-t-2 border-gray-700 mt-1 pt-1 text-center">
+                          <div className={`font-bold text-sm ${totTag === "BANKER" ? "text-green-700" : "text-red-600"}`}>
+                            {fmt(Math.abs(totPL))}
+                          </div>
+                          <div className={`text-xs font-bold tracking-wider ${totTag === "BANKER" ? "text-green-600" : "text-red-500"}`}>
+                            {totTag}
+                          </div>
+                          {applyWinDisc && <div className="text-xs text-blue-500 font-normal">W.disc</div>}
                         </div>
-                        {applyWinDisc && <div className="text-xs text-blue-500 font-normal">W.disc</div>}
                       </div>
                     </div>
                   </td>

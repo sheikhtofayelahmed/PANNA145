@@ -23,7 +23,7 @@ function calcRow(row, agent) {
 
 function fmt(n) { return Math.round(n).toLocaleString(); }
 
-export default function VisitorGameEntry() {
+export default function VisitorGameEntry({ moderatorId = "" }) {
   const [agents, setAgents] = useState([]);
   const [gameNames, setGameNames] = useState([]);
   const [records, setRecords] = useState([]);
@@ -99,6 +99,7 @@ export default function VisitorGameEntry() {
             single: Number(single || 0),
             jodi: Number(jodi || 0),
           },
+          moderatorId,
         }),
       });
       if (res.ok) {
@@ -129,16 +130,30 @@ export default function VisitorGameEntry() {
   const agentMap = {};
   agents.forEach((a) => { agentMap[a.agentId] = a; });
 
+  // Filter: only show entries by this moderator (if moderatorId is known)
+  const myRecords = moderatorId
+    ? records.filter((r) => r.moderatorId === moderatorId)
+    : records;
+
+  // Count entries per agent
+  const agentCountMap = {};
+  myRecords.forEach((r) => {
+    if (!agentCountMap[r.agentId])
+      agentCountMap[r.agentId] = { name: r.agentName || r.agentId, count: 0 };
+    agentCountMap[r.agentId].count++;
+  });
+  const agentCountList = Object.values(agentCountMap);
+
   // Group all records by gameName, preserving serial order from gameNames list
   const gameGroups = [];
   gameNames.forEach((gn) => {
-    const gnRecs = records.filter((r) => r.gameName === gn.name);
+    const gnRecs = myRecords.filter((r) => r.gameName === gn.name);
     if (gnRecs.length > 0) {
       gameGroups.push({ gameName: gn.name, recs: gnRecs });
     }
   });
   // Also collect records whose game name is not in the preset list
-  const extraRecs = records.filter((r) => !gameNames.find((gn) => gn.name === r.gameName));
+  const extraRecs = myRecords.filter((r) => !gameNames.find((gn) => gn.name === r.gameName));
   if (extraRecs.length > 0) {
     gameGroups.push({ gameName: "Other *", recs: extraRecs });
   }
@@ -235,11 +250,38 @@ export default function VisitorGameEntry() {
         </button>
       </form>
 
-      {/* Entries — grouped by agent, game names in serial order */}
+      {/* Entries — filtered to this moderator, grouped by game name in serial order */}
       <div className="space-y-5">
-        <h3 className="text-xs text-gray-500 uppercase tracking-wider">
-          All Entries ({records.length})
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs text-gray-500 uppercase tracking-wider">
+            My Entries ({myRecords.length})
+          </h3>
+          {moderatorId && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-900/50 text-yellow-400 font-mono font-bold">
+              {moderatorId}
+            </span>
+          )}
+        </div>
+
+        {/* Agent entry count summary */}
+        {agentCountList.length > 0 && (
+          <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+            <div className="px-4 py-2 bg-gray-800 border-b border-gray-700 flex items-center justify-between">
+              <span className="text-xs text-gray-400 uppercase tracking-wider">Agents</span>
+              <span className="text-xs font-bold text-white">{agentCountList.length}</span>
+            </div>
+            <div className="divide-y divide-gray-800">
+              {agentCountList.map((a, i) => (
+                <div key={i} className="flex items-center justify-between px-4 py-2">
+                  <span className="text-sm text-gray-200">{a.name}</span>
+                  <span className="text-xs font-mono text-yellow-400 font-bold">
+                    {a.count} {a.count === 1 ? "entry" : "entries"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {gameGroups.length === 0 ? (
           <p className="text-center text-gray-700 text-sm py-6 border border-dashed border-gray-800 rounded-lg">No entries yet</p>
