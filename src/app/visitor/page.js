@@ -21,20 +21,37 @@ function calcRow(row, agent) {
 
 function fmt(n) { return Math.round(n).toLocaleString(); }
 
-function printAgentTable({ agentName, latestDate, gameNames, dataMap, totPanna, totSingle, totJodi, rawTotGame, totNetGame, totNetWin }) {
-  const totPL  = totNetGame - totNetWin;
-  const totTag = totPL >= 0 ? "BANKER" : "AGENT";
-  const N      = gameNames.length;
+function printAgentTable({ agentName, latestDate, gameNames, dataMap, totPanna, totSingle, totJodi, rawTotWin, rawTotGame, totNetGame, totPL, applyWinDisc }) {
+  const totTag  = totPL >= 0 ? "BANKER" : "AGENT";
+  const N       = gameNames.length;
+  const plColor = totTag === "BANKER" ? "#166534" : "#991b1b";
+
+  const lastCell = `
+    <div style="font-weight:bold;font-size:14px;">${agentName}</div>
+    ${latestDate ? `<div style="font-size:11px;color:#666;margin-bottom:8px;">${latestDate}</div>` : ""}
+    <div style="font-size:11px;color:#666;">Pana</div>
+    <div style="font-family:monospace;font-weight:600;margin-bottom:4px;">${totPanna || "—"}</div>
+    <div style="font-size:11px;color:#666;">Single</div>
+    <div style="font-family:monospace;font-weight:600;margin-bottom:4px;">${totSingle || "—"}</div>
+    <div style="font-size:11px;color:#666;">Jodi</div>
+    <div style="font-family:monospace;font-weight:600;margin-bottom:6px;">${totJodi || "—"}</div>
+    <div style="border-top:1px solid #ccc;padding-top:5px;">
+      <div style="font-size:11px;color:#666;">Total Win</div>
+      <div style="font-family:monospace;font-weight:600;margin-bottom:6px;">${fmt(rawTotWin)}</div>
+    </div>
+    <div style="border-top:1px solid #ccc;padding-top:5px;">
+      <div style="font-weight:bold;font-size:14px;color:${plColor};">${fmt(Math.abs(totPL))}</div>
+      <div style="font-size:11px;font-weight:bold;color:${plColor};">${totTag}</div>
+      ${applyWinDisc ? `<div style="font-size:10px;color:#1d4ed8;">W.disc</div>` : ""}
+    </div>`;
 
   const dataRows = gameNames.map((gn, i) => {
-    const row = dataMap[gn];
+    const row      = dataMap[gn];
     const gameVal  = row ? row.totalGame : "—";
     const pannaVal = row ? (row.totalWin?.panna  || "—") : "—";
     const singleVal= row ? (row.totalWin?.single || "—") : "—";
     const firstCol = i === 0
-      ? `<td rowspan="${N}" style="border:1px solid #999;padding:6px 8px;text-align:center;vertical-align:top;">
-           <strong>${agentName}</strong><br/><span style="font-size:11px;color:#666;">${latestDate}</span>
-         </td>`
+      ? `<td rowspan="${N}" style="border:1px solid #999;padding:8px;text-align:center;vertical-align:middle;">${lastCell}</td>`
       : "";
     return `<tr>
       <td style="border:1px solid #999;padding:6px 8px;">${gn}</td>
@@ -44,8 +61,6 @@ function printAgentTable({ agentName, latestDate, gameNames, dataMap, totPanna, 
       ${firstCol}
     </tr>`;
   }).join("");
-
-  const plColor = totTag === "BANKER" ? "#166534" : "#991b1b";
 
   const html = `<!DOCTYPE html>
 <html>
@@ -57,7 +72,6 @@ function printAgentTable({ agentName, latestDate, gameNames, dataMap, totPanna, 
     table { border-collapse: collapse; width: 100%; }
     th { background: #f3f4f6; border: 1px solid #999; padding: 6px 8px; font-size: 13px; }
     td { border: 1px solid #999; padding: 6px 8px; font-size: 13px; }
-    .lbl { font-size: 11px; color: #666; }
     @media print { button { display: none; } }
   </style>
 </head>
@@ -70,42 +84,14 @@ function printAgentTable({ agentName, latestDate, gameNames, dataMap, totPanna, 
         <th style="text-align:right;width:90px;">Game</th>
         <th style="text-align:center;width:60px;">Pana</th>
         <th style="text-align:center;width:60px;">Single</th>
-        <th style="text-align:center;width:110px;"></th>
+        <th style="text-align:center;width:120px;"></th>
       </tr>
     </thead>
-    <tbody>
-      ${dataRows}
-      <tr>
-        <td colspan="4" style="border-top:2px solid #666;"></td>
-        <td style="border-top:2px solid #666;padding:6px 8px;">
-          <div class="lbl">Pana</div><div style="font-family:monospace;font-weight:600;">${totPanna || "—"}</div>
-        </td>
-      </tr>
-      <tr>
-        <td colspan="4"></td>
-        <td style="padding:6px 8px;">
-          <div class="lbl">Single</div><div style="font-family:monospace;font-weight:600;">${totSingle || "—"}</div>
-        </td>
-      </tr>
-      <tr>
-        <td colspan="4"></td>
-        <td style="padding:6px 8px;">
-          <div class="lbl">Jodi</div><div style="font-family:monospace;font-weight:600;">${totJodi || "—"}</div>
-        </td>
-      </tr>
-      <tr>
-        <td colspan="4" style="border-top:2px solid #666;"></td>
-        <td style="border-top:2px solid #666;padding:6px 8px;">
-          <div style="font-weight:bold;color:${plColor};">${fmt(Math.abs(totPL))}</div>
-          <div style="font-size:11px;font-weight:bold;color:${plColor};">${totTag}</div>
-        </td>
-      </tr>
-    </tbody>
+    <tbody>${dataRows}</tbody>
   </table>
   <div style="margin-top:6px;font-size:12px;color:#444;">
-    <span style="display:inline-block;width:80px;"></span>
-    <span style="font-family:monospace;margin-right:8px;">${fmt(rawTotGame)}</span> Total Game &nbsp;
-    <span style="font-family:monospace;margin-right:8px;">${fmt(totNetGame)}</span> After Discount
+    <span style="font-family:monospace;margin-right:4px;">${fmt(rawTotGame)}</span> Total Game &nbsp;|&nbsp;
+    <span style="font-family:monospace;margin-right:4px;">${fmt(totNetGame)}</span> After Discount
   </div>
   <script>window.onload = () => window.print();<\/script>
 </body>
@@ -218,7 +204,7 @@ function AgentTable({ agentId, agentName, rows, agent, gameNames }) {
   const th = "border border-gray-400 px-2 py-1.5 text-sm font-semibold bg-gray-100";
 
   function handlePrint() {
-    printAgentTable({ agentName, latestDate, gameNames, dataMap, totPanna, totSingle, totJodi, rawTotGame, totNetGame, totNetWin });
+    printAgentTable({ agentName, latestDate, gameNames, dataMap, totPanna, totSingle, totJodi, rawTotWin, rawTotGame, totNetGame, totPL, applyWinDisc });
   }
 
   return (
@@ -251,47 +237,41 @@ function AgentTable({ agentId, agentName, rows, agent, gameNames }) {
                 <td className={`${td} text-center`}>{row ? (row.totalWin?.panna  || "—") : "—"}</td>
                 <td className={`${td} text-center`}>{row ? (row.totalWin?.single || "—") : "—"}</td>
                 {i === 0 && (
-                  <td className={`${td} text-center align-top`} rowSpan={N}>
+                  <td className={`${td} text-center align-middle`} rowSpan={N}>
                     <div className="font-bold text-sm leading-tight text-black">{agentName}</div>
-                    {latestDate && <div className="text-xs text-gray-500 mt-0.5">{latestDate}</div>}
+                    {latestDate && <div className="text-xs text-gray-500 mt-1">{latestDate}</div>}
+                    <div className="mt-3 space-y-1.5 text-center">
+                      <div>
+                        <div className="text-xs text-gray-500">Pana</div>
+                        <div className="font-mono font-semibold text-sm">{totPanna || "—"}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-gray-500">Single</div>
+                        <div className="font-mono font-semibold text-sm">{totSingle || "—"}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-gray-500">Jodi</div>
+                        <div className="font-mono font-semibold text-sm">{totJodi || "—"}</div>
+                      </div>
+                      <div className="border-t border-gray-300 pt-1.5">
+                        <div className="text-xs text-gray-500">Total Win</div>
+                        <div className="font-mono font-semibold text-sm">{fmt(rawTotWin)}</div>
+                      </div>
+                      <div className="border-t border-gray-300 pt-1.5">
+                        <div className={`font-bold text-sm ${totTag === "BANKER" ? "text-green-700" : "text-red-600"}`}>
+                          {fmt(Math.abs(totPL))}
+                        </div>
+                        <div className={`text-xs font-bold tracking-wider ${totTag === "BANKER" ? "text-green-600" : "text-red-500"}`}>
+                          {totTag}
+                        </div>
+                        {applyWinDisc && <div className="text-xs text-blue-500 font-normal">W.disc</div>}
+                      </div>
+                    </div>
                   </td>
                 )}
               </tr>
             );
           })}
-
-          <tr>
-            <td className={`${td} border-t-2 border-gray-500`} colSpan={4}></td>
-            <td className={`${td} border-t-2 border-gray-500`}>
-              <div className="text-xs text-gray-500">Pana</div>
-              <div className="font-mono font-semibold">{totPanna || "—"}</div>
-            </td>
-          </tr>
-          <tr>
-            <td className={td} colSpan={4}></td>
-            <td className={td}>
-              <div className="text-xs text-gray-500">Single</div>
-              <div className="font-mono font-semibold">{totSingle || "—"}</div>
-            </td>
-          </tr>
-          <tr>
-            <td className={td} colSpan={4}></td>
-            <td className={td}>
-              <div className="text-xs text-gray-500">Jodi</div>
-              <div className="font-mono font-semibold">{totJodi || "—"}</div>
-            </td>
-          </tr>
-          <tr>
-            <td className={`${td} border-t-2 border-gray-500`} colSpan={4}></td>
-            <td className={`${td} border-t-2 border-gray-500`}>
-              <div className={`font-bold text-sm ${totTag === "BANKER" ? "text-green-700" : "text-red-600"}`}>
-                {fmt(Math.abs(totPL))}
-              </div>
-              <div className={`text-xs font-bold tracking-wider ${totTag === "BANKER" ? "text-green-600" : "text-red-500"}`}>
-                {totTag}
-              </div>
-            </td>
-          </tr>
         </tbody>
       </table>
 
