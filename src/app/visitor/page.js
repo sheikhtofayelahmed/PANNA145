@@ -2,17 +2,17 @@
 import { useEffect, useState } from "react";
 
 function calcRow(row, agent) {
-  const gameDisc = (agent?.gameDiscount || 0) / 100;
-  const winDisc  = (agent?.winDiscount  || 0) / 100;
-  const eligible = agent?.winDiscountEligible || false;
-  const rawGame  = row.totalGame || 0;
-  const rawWin   =
+  const gameDisc  = (agent?.gameDiscount || 0) / 100;
+  const winDisc   = (agent?.winDiscount  || 0) / 100;
+  
+  const rawGame   = row.totalGame || 0;
+  const rawWin    =
     (row.totalWin?.panna  || 0) * 145 +
     (row.totalWin?.single || 0) * 9   +
     (row.totalWin?.jodi   || 0) * 80;
-  const netGame     = rawGame * (1 - gameDisc);
-  const applyWinDisc = eligible && rawWin < rawGame;
-  const netWin      = applyWinDisc ? rawWin * (1 - winDisc) : rawWin;
+  const netGame      = rawGame * (1 - gameDisc);
+  const applyWinDisc = winDisc > 0 && rawWin < rawGame;
+  const netWin       = applyWinDisc ? rawWin * (1 - winDisc) : rawWin;
   const pl  = netGame - netWin;
   const tag = pl >= 0 ? "BANKER" : "AGENT";
   return { rawGame, rawWin, netGame, netWin, pl, tag };
@@ -20,22 +20,26 @@ function calcRow(row, agent) {
 
 function fmt(n) { return Math.round(n).toLocaleString(); }
 
-function printAgentTable({ agentName, latestDate, rows, calcs, totPanna, totSingle, totJodi, rawTotGame, totNetGame, totNetWin }) {
+function printAgentTable({ agentName, latestDate, gameNames, dataMap, totPanna, totSingle, totJodi, rawTotGame, totNetGame, totNetWin }) {
   const totPL  = totNetGame - totNetWin;
   const totTag = totPL >= 0 ? "BANKER" : "AGENT";
-  const N      = rows.length;
+  const N      = gameNames.length;
 
-  const dataRows = rows.map((row, i) => {
+  const dataRows = gameNames.map((gn, i) => {
+    const row = dataMap[gn];
+    const gameVal  = row ? row.totalGame : "—";
+    const pannaVal = row ? (row.totalWin?.panna  || "—") : "—";
+    const singleVal= row ? (row.totalWin?.single || "—") : "—";
     const firstCol = i === 0
       ? `<td rowspan="${N}" style="border:1px solid #999;padding:6px 8px;text-align:center;vertical-align:top;">
            <strong>${agentName}</strong><br/><span style="font-size:11px;color:#666;">${latestDate}</span>
          </td>`
       : "";
     return `<tr>
-      <td style="border:1px solid #999;padding:6px 8px;">${row.gameName}</td>
-      <td style="border:1px solid #999;padding:6px 8px;text-align:right;font-family:monospace;">${row.totalGame}</td>
-      <td style="border:1px solid #999;padding:6px 8px;text-align:center;">${row.totalWin?.panna  || ""}</td>
-      <td style="border:1px solid #999;padding:6px 8px;text-align:center;">${row.totalWin?.single || ""}</td>
+      <td style="border:1px solid #999;padding:6px 8px;">${gn}</td>
+      <td style="border:1px solid #999;padding:6px 8px;text-align:right;font-family:monospace;">${gameVal}</td>
+      <td style="border:1px solid #999;padding:6px 8px;text-align:center;">${pannaVal}</td>
+      <td style="border:1px solid #999;padding:6px 8px;text-align:center;">${singleVal}</td>
       ${firstCol}
     </tr>`;
   }).join("");
@@ -52,9 +56,7 @@ function printAgentTable({ agentName, latestDate, rows, calcs, totPanna, totSing
     table { border-collapse: collapse; width: 100%; }
     th { background: #f3f4f6; border: 1px solid #999; padding: 6px 8px; font-size: 13px; }
     td { border: 1px solid #999; padding: 6px 8px; font-size: 13px; }
-    .summary-label { font-size: 11px; color: #666; }
-    .pl-val { font-weight: bold; color: ${plColor}; }
-    .totals { margin-top: 6px; font-size: 12px; color: #444; }
+    .lbl { font-size: 11px; color: #666; }
     @media print { button { display: none; } }
   </style>
 </head>
@@ -75,36 +77,33 @@ function printAgentTable({ agentName, latestDate, rows, calcs, totPanna, totSing
       <tr>
         <td colspan="4" style="border-top:2px solid #666;"></td>
         <td style="border-top:2px solid #666;padding:6px 8px;">
-          <div class="summary-label">Pana</div>
-          <div style="font-family:monospace;font-weight:600;">${totPanna || "—"}</div>
+          <div class="lbl">Pana</div><div style="font-family:monospace;font-weight:600;">${totPanna || "—"}</div>
         </td>
       </tr>
       <tr>
         <td colspan="4"></td>
         <td style="padding:6px 8px;">
-          <div class="summary-label">Single</div>
-          <div style="font-family:monospace;font-weight:600;">${totSingle || "—"}</div>
+          <div class="lbl">Single</div><div style="font-family:monospace;font-weight:600;">${totSingle || "—"}</div>
         </td>
       </tr>
       <tr>
         <td colspan="4"></td>
         <td style="padding:6px 8px;">
-          <div class="summary-label">Jodi</div>
-          <div style="font-family:monospace;font-weight:600;">${totJodi || "—"}</div>
+          <div class="lbl">Jodi</div><div style="font-family:monospace;font-weight:600;">${totJodi || "—"}</div>
         </td>
       </tr>
       <tr>
         <td colspan="4" style="border-top:2px solid #666;"></td>
         <td style="border-top:2px solid #666;padding:6px 8px;">
-          <div class="pl-val">${fmt(Math.abs(totPL))}</div>
+          <div style="font-weight:bold;color:${plColor};">${fmt(Math.abs(totPL))}</div>
           <div style="font-size:11px;font-weight:bold;color:${plColor};">${totTag}</div>
         </td>
       </tr>
     </tbody>
   </table>
-  <div class="totals">
+  <div style="margin-top:6px;font-size:12px;color:#444;">
     <span style="display:inline-block;width:80px;"></span>
-    <span style="font-family:monospace;margin-right:8px;">${fmt(rawTotGame)}</span> Total Game &nbsp;&nbsp;
+    <span style="font-family:monospace;margin-right:8px;">${fmt(rawTotGame)}</span> Total Game &nbsp;
     <span style="font-family:monospace;margin-right:8px;">${fmt(totNetGame)}</span> After Discount
   </div>
   <script>window.onload = () => window.print();<\/script>
@@ -117,22 +116,26 @@ function printAgentTable({ agentName, latestDate, rows, calcs, totPanna, totSing
 }
 
 export default function VisitorPage() {
-  const [data, setData]         = useState([]);
-  const [agentMap, setAgentMap] = useState({});
-  const [loading, setLoading]   = useState(true);
+  const [data, setData]           = useState([]);
+  const [agentMap, setAgentMap]   = useState({});
+  const [gameNames, setGameNames] = useState([]);
+  const [loading, setLoading]     = useState(true);
 
   async function load() {
     try {
-      const [gameRes, agentRes] = await Promise.all([
+      const [gameRes, agentRes, nameRes] = await Promise.all([
         fetch("/api/visitor-game-data"),
         fetch("/api/get-all-agents"),
+        fetch("/api/game-names"),
       ]);
       const gameJson  = await gameRes.json();
       const agentJson = await agentRes.json();
+      const nameJson  = await nameRes.json();
       setData(gameJson.data || []);
       const map = {};
       (agentJson.agents || []).forEach((a) => { map[a.agentId] = a; });
       setAgentMap(map);
+      setGameNames((nameJson.gameNames || []).map((g) => g.name));
     } finally {
       setLoading(false);
     }
@@ -172,6 +175,7 @@ export default function VisitorPage() {
               agentName={agentName}
               rows={rows}
               agent={agentMap[agentId]}
+              gameNames={gameNames}
             />
           ))}
         </div>
@@ -180,35 +184,39 @@ export default function VisitorPage() {
   );
 }
 
-function AgentTable({ agentId, agentName, rows, agent }) {
-  const calcs = rows.map((row) => calcRow(row, agent));
+function AgentTable({ agentId, agentName, rows, agent, gameNames }) {
+  // Map gameName → row for quick lookup
+  const dataMap = {};
+  rows.forEach((r) => { dataMap[r.gameName] = r; });
 
-  const totPanna  = rows.reduce((s, r) => s + (r.totalWin?.panna  || 0), 0);
-  const totSingle = rows.reduce((s, r) => s + (r.totalWin?.single || 0), 0);
-  const totJodi   = rows.reduce((s, r) => s + (r.totalWin?.jodi   || 0), 0);
+  // Only calc rows that have actual data
+  const dataRows = rows.filter((r) => r.totalGame);
+  const calcs    = dataRows.map((r) => calcRow(r, agent));
 
-  const rawTotGame = rows.reduce((s, r) => s + (r.totalGame || 0), 0);
+  const totPanna  = dataRows.reduce((s, r) => s + (r.totalWin?.panna  || 0), 0);
+  const totSingle = dataRows.reduce((s, r) => s + (r.totalWin?.single || 0), 0);
+  const totJodi   = dataRows.reduce((s, r) => s + (r.totalWin?.jodi   || 0), 0);
+
+  const rawTotGame = dataRows.reduce((s, r) => s + (r.totalGame || 0), 0);
   const totNetGame = calcs.reduce((s, c) => s + c.netGame, 0);
   const totNetWin  = calcs.reduce((s, c) => s + c.netWin,  0);
   const totPL      = totNetGame - totNetWin;
   const totTag     = totPL >= 0 ? "BANKER" : "AGENT";
 
-  const N = rows.length;
-
   const latestDate = rows.length > 0 && rows[0].createdAt
     ? new Date(rows[0].createdAt).toLocaleDateString("en-GB")
     : "";
 
+  const N  = gameNames.length;
   const td = "border border-gray-400 px-2 py-1.5 text-sm";
   const th = "border border-gray-400 px-2 py-1.5 text-sm font-semibold bg-gray-100";
 
   function handlePrint() {
-    printAgentTable({ agentName, latestDate, rows, calcs, totPanna, totSingle, totJodi, rawTotGame, totNetGame, totNetWin });
+    printAgentTable({ agentName, latestDate, gameNames, dataMap, totPanna, totSingle, totJodi, rawTotGame, totNetGame, totNetWin });
   }
 
   return (
     <div>
-      {/* Print button */}
       <div className="flex justify-end mb-1">
         <button
           onClick={handlePrint}
@@ -228,20 +236,23 @@ function AgentTable({ agentId, agentName, rows, agent }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, i) => (
-            <tr key={i}>
-              <td className={`${td} text-left`}>{row.gameName}</td>
-              <td className={`${td} text-right font-mono`}>{row.totalGame}</td>
-              <td className={`${td} text-center`}>{row.totalWin?.panna  || ""}</td>
-              <td className={`${td} text-center`}>{row.totalWin?.single || ""}</td>
-              {i === 0 && (
-                <td className={`${td} text-center align-top`} rowSpan={N}>
-                  <div className="font-bold text-sm leading-tight">{agentName}</div>
-                  {latestDate && <div className="text-xs text-gray-500 mt-0.5">{latestDate}</div>}
-                </td>
-              )}
-            </tr>
-          ))}
+          {gameNames.map((gn, i) => {
+            const row = dataMap[gn];
+            return (
+              <tr key={gn} className={!row ? "text-gray-400" : ""}>
+                <td className={`${td} text-left`}>{gn}</td>
+                <td className={`${td} text-right font-mono`}>{row ? row.totalGame : "—"}</td>
+                <td className={`${td} text-center`}>{row ? (row.totalWin?.panna  || "—") : "—"}</td>
+                <td className={`${td} text-center`}>{row ? (row.totalWin?.single || "—") : "—"}</td>
+                {i === 0 && (
+                  <td className={`${td} text-center align-top`} rowSpan={N}>
+                    <div className="font-bold text-sm leading-tight text-black">{agentName}</div>
+                    {latestDate && <div className="text-xs text-gray-500 mt-0.5">{latestDate}</div>}
+                  </td>
+                )}
+              </tr>
+            );
+          })}
 
           <tr>
             <td className={`${td} border-t-2 border-gray-500`} colSpan={4}></td>

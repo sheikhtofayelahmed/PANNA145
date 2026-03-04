@@ -4,30 +4,34 @@ import { useEffect, useState } from "react";
 function calcRow(row, agent) {
   const gameDisc = (agent?.gameDiscount || 0) / 100;
   const winDisc  = (agent?.winDiscount  || 0) / 100;
-  const eligible = agent?.winDiscountEligible || false;
+  
   const rawGame  = row.totalGame || 0;
   const rawWin   =
     (row.totalWin?.panna  || 0) * 145 +
     (row.totalWin?.single || 0) * 9   +
     (row.totalWin?.jodi   || 0) * 80;
   const netGame      = rawGame * (1 - gameDisc);
-  const applyWinDisc = eligible && rawWin < rawGame;
+  const applyWinDisc = winDisc > 0 && rawWin < rawGame;
   const netWin       = applyWinDisc ? rawWin * (1 - winDisc) : rawWin;
   const pl = netGame - netWin;
-  return { netGame, netWin, pl };
+  return { netGame, rawWin, netWin, pl, applyWinDisc };
 }
 
 function fmt(n) { return Math.round(n).toLocaleString(); }
 
-function printSummary(rows, grandGame, grandWin, grandPL, grandTag) {
+function printSummary(rows, grandGame, grandRawWin, grandWin, grandPL, grandTag) {
   const date = new Date().toLocaleDateString("en-GB");
 
   const dataRows = rows.map((r) => {
     const plColor = r.tag === "BANKER" ? "#166534" : "#991b1b";
+    const winCell = r.winDiscApplied
+      ? `<div style="font-family:monospace;">${fmt(r.rawWin)}</div>
+         <div style="font-family:monospace;color:#1d4ed8;font-size:12px;">↓ ${fmt(r.netWin)} <span style="font-size:10px;background:#dbeafe;padding:1px 4px;border-radius:3px;">disc</span></div>`
+      : `<div style="font-family:monospace;">${fmt(r.netWin)}</div>`;
     return `<tr>
       <td style="border:1px solid #999;padding:6px 10px;">${r.agentName}</td>
       <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;">${fmt(r.netGame)}</td>
-      <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;">${fmt(r.netWin)}</td>
+      <td style="border:1px solid #999;padding:6px 10px;text-align:right;">${winCell}</td>
       <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;font-weight:bold;color:${plColor};">${fmt(Math.abs(r.pl))}</td>
       <td style="border:1px solid #999;padding:6px 10px;text-align:center;font-weight:bold;color:${plColor};">${r.tag}</td>
     </tr>`;
@@ -70,7 +74,10 @@ function printSummary(rows, grandGame, grandWin, grandPL, grandTag) {
       <tr>
         <td>Total</td>
         <td style="text-align:right;font-family:monospace;">${fmt(grandGame)}</td>
-        <td style="text-align:right;font-family:monospace;">${fmt(grandWin)}</td>
+        <td style="text-align:right;">
+          <div style="font-family:monospace;">${fmt(grandRawWin)}</div>
+          ${grandRawWin !== grandWin ? `<div style="font-family:monospace;color:#1d4ed8;font-size:12px;">↓ ${fmt(grandWin)} disc</div>` : ""}
+        </td>
         <td style="text-align:right;font-family:monospace;color:${grandColor};">${fmt(Math.abs(grandPL))}</td>
         <td style="text-align:center;color:${grandColor};">${grandTag}</td>
       </tr>
@@ -126,22 +133,25 @@ export default function AdminHome() {
   const groups = {};
   data.forEach((row) => {
     if (!groups[row.agentId])
-      groups[row.agentId] = { agentName: row.agentName || row.agentId, netGame: 0, netWin: 0 };
+      groups[row.agentId] = { agentName: row.agentName || row.agentId, netGame: 0, rawWin: 0, netWin: 0, winDiscApplied: false };
     const c = calcRow(row, agentMap[row.agentId]);
     groups[row.agentId].netGame += c.netGame;
+    groups[row.agentId].rawWin  += c.rawWin;
     groups[row.agentId].netWin  += c.netWin;
+    if (c.applyWinDisc) groups[row.agentId].winDiscApplied = true;
   });
 
   const rows = Object.entries(groups).map(([agentId, g]) => {
     const pl  = g.netGame - g.netWin;
     const tag = pl >= 0 ? "BANKER" : "AGENT";
-    return { agentId, agentName: g.agentName, netGame: g.netGame, netWin: g.netWin, pl, tag };
+    return { agentId, agentName: g.agentName, netGame: g.netGame, rawWin: g.rawWin, netWin: g.netWin, pl, tag, winDiscApplied: g.winDiscApplied };
   });
 
-  const grandGame = rows.reduce((s, r) => s + r.netGame, 0);
-  const grandWin  = rows.reduce((s, r) => s + r.netWin,  0);
-  const grandPL   = grandGame - grandWin;
-  const grandTag  = grandPL >= 0 ? "BANKER" : "AGENT";
+  const grandGame   = rows.reduce((s, r) => s + r.netGame, 0);
+  const grandRawWin = rows.reduce((s, r) => s + r.rawWin,  0);
+  const grandWin    = rows.reduce((s, r) => s + r.netWin,  0);
+  const grandPL     = grandGame - grandWin;
+  const grandTag    = grandPL >= 0 ? "BANKER" : "AGENT";
 
   const th = "border border-gray-600 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-400";
   const td = "border border-gray-700 px-3 py-2 text-sm";
@@ -153,7 +163,7 @@ export default function AdminHome() {
         <div className="flex gap-2">
           {rows.length > 0 && (
             <button
-              onClick={() => printSummary(rows, grandGame, grandWin, grandPL, grandTag)}
+              onClick={() => printSummary(rows, grandGame, grandRawWin, grandWin, grandPL, grandTag)}
               className="px-4 py-1.5 text-xs border border-gray-600 hover:bg-gray-800 text-gray-300 font-bold rounded-lg transition">
               🖨 Print
             </button>
@@ -191,7 +201,14 @@ export default function AdminHome() {
               <tr key={r.agentId} className="hover:bg-gray-900/40">
                 <td className={`${td} font-medium`}>{r.agentName}</td>
                 <td className={`${td} text-right font-mono`}>{fmt(r.netGame)}</td>
-                <td className={`${td} text-right font-mono`}>{fmt(r.netWin)}</td>
+                <td className={`${td} text-right`}>
+                  <div className="font-mono">{fmt(r.rawWin)}</div>
+                  {r.winDiscApplied && (
+                    <div className="font-mono text-blue-400 text-xs mt-0.5">
+                      ↓ {fmt(r.netWin)} <span className="text-blue-500">disc</span>
+                    </div>
+                  )}
+                </td>
                 <td className={`${td} text-right font-mono font-bold ${r.tag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
                   {fmt(Math.abs(r.pl))}
                 </td>
@@ -207,7 +224,12 @@ export default function AdminHome() {
             <tr className="bg-gray-900 border-t-2 border-gray-600 font-bold">
               <td className={`${td} text-xs uppercase tracking-wider text-gray-400`}>Total</td>
               <td className={`${td} text-right font-mono`}>{fmt(grandGame)}</td>
-              <td className={`${td} text-right font-mono`}>{fmt(grandWin)}</td>
+              <td className={`${td} text-right`}>
+                <div className="font-mono">{fmt(grandRawWin)}</div>
+                {grandRawWin !== grandWin && (
+                  <div className="font-mono text-blue-400 text-xs mt-0.5">↓ {fmt(grandWin)} disc</div>
+                )}
+              </td>
               <td className={`${td} text-right font-mono font-bold ${grandTag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
                 {fmt(Math.abs(grandPL))}
               </td>

@@ -6,7 +6,7 @@ export default async function handler(req, res) {
   const col = db.collection("gameNames");
 
   if (req.method === "GET") {
-    const list = await col.find({}).sort({ createdAt: 1 }).toArray();
+    const list = await col.find({}).sort({ createdAt: 1, _id: 1 }).toArray();
     return res.status(200).json({ gameNames: list });
   }
 

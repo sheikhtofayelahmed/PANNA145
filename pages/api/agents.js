@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "POST") {
-    const { agentId, name, gameDiscount, winDiscount, winDiscountEligible } = req.body;
+    const { agentId, name, gameDiscount, winDiscount } = req.body;
     if (!agentId?.trim() || !name?.trim())
       return res.status(400).json({ error: "Agent ID and name required" });
 
@@ -23,20 +23,18 @@ export default async function handler(req, res) {
       name: name.trim(),
       gameDiscount: Number(gameDiscount || 0),
       winDiscount: Number(winDiscount || 0),
-      winDiscountEligible: Boolean(winDiscountEligible),
     });
     return res.status(201).json({ message: "Agent created" });
   }
 
   if (req.method === "PUT") {
-    const { agentId, name, gameDiscount, winDiscount, winDiscountEligible } = req.body;
+    const { agentId, name, gameDiscount, winDiscount } = req.body;
     if (!agentId) return res.status(400).json({ error: "agentId required" });
 
     const update = {};
     if (name?.trim()) update.name = name.trim();
     if (gameDiscount !== undefined) update.gameDiscount = Number(gameDiscount);
     if (winDiscount !== undefined) update.winDiscount = Number(winDiscount);
-    if (winDiscountEligible !== undefined) update.winDiscountEligible = Boolean(winDiscountEligible);
 
     await col.updateOne({ agentId }, { $set: update });
     return res.status(200).json({ message: "Updated" });

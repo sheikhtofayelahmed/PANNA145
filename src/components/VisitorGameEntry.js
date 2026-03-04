@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 function calcRow(row, agent) {
   const gameDisc = (agent?.gameDiscount || 0) / 100;
   const winDisc = (agent?.winDiscount || 0) / 100;
-  const eligible = agent?.winDiscountEligible || false;
+  
 
   const rawGame = row.totalGame || 0;
   const rawWin =
@@ -13,7 +13,7 @@ function calcRow(row, agent) {
     (row.totalWin?.jodi || 0) * 80;
 
   const netGame = rawGame * (1 - gameDisc);
-  const applyWinDisc = eligible && rawWin < rawGame;
+  const applyWinDisc = winDisc > 0 && rawWin < rawGame;
   const netWin = applyWinDisc ? rawWin * (1 - winDisc) : rawWin;
   const pl = netGame - netWin;
   const tag = pl >= 0 ? "BANKER" : "AGENT";
