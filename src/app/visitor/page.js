@@ -1,75 +1,178 @@
 "use client";
-
 import { useEffect, useState } from "react";
 
-export default function VisitorPage() {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState(null);
+function calcRow(row, agent) {
+  const gameDisc = (agent?.gameDiscount || 0) / 100;
+  const winDisc  = (agent?.winDiscount  || 0) / 100;
+  const eligible = agent?.winDiscountEligible || false;
+  const rawGame  = row.totalGame || 0;
+  const rawWin   =
+    (row.totalWin?.panna  || 0) * 145 +
+    (row.totalWin?.single || 0) * 9   +
+    (row.totalWin?.jodi   || 0) * 80;
+  const netGame     = rawGame * (1 - gameDisc);
+  const applyWinDisc = eligible && rawWin < rawGame;
+  const netWin      = applyWinDisc ? rawWin * (1 - winDisc) : rawWin;
+  const pl  = netGame - netWin;
+  const tag = pl >= 0 ? "BANKER" : "AGENT";
+  return { rawGame, rawWin, netGame, netWin, pl, tag };
+}
 
-  const fetchData = async () => {
+function fmt(n) { return Math.round(n).toLocaleString(); }
+
+function printAgentTable({ agentName, latestDate, rows, calcs, totPanna, totSingle, totJodi, rawTotGame, totNetGame, totNetWin }) {
+  const totPL  = totNetGame - totNetWin;
+  const totTag = totPL >= 0 ? "BANKER" : "AGENT";
+  const N      = rows.length;
+
+  const dataRows = rows.map((row, i) => {
+    const firstCol = i === 0
+      ? `<td rowspan="${N}" style="border:1px solid #999;padding:6px 8px;text-align:center;vertical-align:top;">
+           <strong>${agentName}</strong><br/><span style="font-size:11px;color:#666;">${latestDate}</span>
+         </td>`
+      : "";
+    return `<tr>
+      <td style="border:1px solid #999;padding:6px 8px;">${row.gameName}</td>
+      <td style="border:1px solid #999;padding:6px 8px;text-align:right;font-family:monospace;">${row.totalGame}</td>
+      <td style="border:1px solid #999;padding:6px 8px;text-align:center;">${row.totalWin?.panna  || ""}</td>
+      <td style="border:1px solid #999;padding:6px 8px;text-align:center;">${row.totalWin?.single || ""}</td>
+      ${firstCol}
+    </tr>`;
+  }).join("");
+
+  const plColor = totTag === "BANKER" ? "#166534" : "#991b1b";
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>${agentName}</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; color: #000; }
+    table { border-collapse: collapse; width: 100%; }
+    th { background: #f3f4f6; border: 1px solid #999; padding: 6px 8px; font-size: 13px; }
+    td { border: 1px solid #999; padding: 6px 8px; font-size: 13px; }
+    .summary-label { font-size: 11px; color: #666; }
+    .pl-val { font-weight: bold; color: ${plColor}; }
+    .totals { margin-top: 6px; font-size: 12px; color: #444; }
+    @media print { button { display: none; } }
+  </style>
+</head>
+<body>
+  <button onclick="window.print()" style="margin-bottom:12px;padding:6px 14px;cursor:pointer;">Print</button>
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align:left;width:80px;">Market</th>
+        <th style="text-align:right;width:90px;">Game</th>
+        <th style="text-align:center;width:60px;">Pana</th>
+        <th style="text-align:center;width:60px;">Single</th>
+        <th style="text-align:center;width:110px;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      ${dataRows}
+      <tr>
+        <td colspan="4" style="border-top:2px solid #666;"></td>
+        <td style="border-top:2px solid #666;padding:6px 8px;">
+          <div class="summary-label">Pana</div>
+          <div style="font-family:monospace;font-weight:600;">${totPanna || "—"}</div>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="4"></td>
+        <td style="padding:6px 8px;">
+          <div class="summary-label">Single</div>
+          <div style="font-family:monospace;font-weight:600;">${totSingle || "—"}</div>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="4"></td>
+        <td style="padding:6px 8px;">
+          <div class="summary-label">Jodi</div>
+          <div style="font-family:monospace;font-weight:600;">${totJodi || "—"}</div>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="4" style="border-top:2px solid #666;"></td>
+        <td style="border-top:2px solid #666;padding:6px 8px;">
+          <div class="pl-val">${fmt(Math.abs(totPL))}</div>
+          <div style="font-size:11px;font-weight:bold;color:${plColor};">${totTag}</div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="totals">
+    <span style="display:inline-block;width:80px;"></span>
+    <span style="font-family:monospace;margin-right:8px;">${fmt(rawTotGame)}</span> Total Game &nbsp;&nbsp;
+    <span style="font-family:monospace;margin-right:8px;">${fmt(totNetGame)}</span> After Discount
+  </div>
+  <script>window.onload = () => window.print();<\/script>
+</body>
+</html>`;
+
+  const w = window.open("", "_blank");
+  w.document.write(html);
+  w.document.close();
+}
+
+export default function VisitorPage() {
+  const [data, setData]         = useState([]);
+  const [agentMap, setAgentMap] = useState({});
+  const [loading, setLoading]   = useState(true);
+
+  async function load() {
     try {
-      const res = await fetch("/api/visitor-game-data");
-      if (res.ok) {
-        const json = await res.json();
-        setData(json.data || []);
-        setLastUpdated(new Date());
-      }
-    } catch (e) {
-      console.error("Fetch error:", e);
+      const [gameRes, agentRes] = await Promise.all([
+        fetch("/api/visitor-game-data"),
+        fetch("/api/get-all-agents"),
+      ]);
+      const gameJson  = await gameRes.json();
+      const agentJson = await agentRes.json();
+      setData(gameJson.data || []);
+      const map = {};
+      (agentJson.agents || []).forEach((a) => { map[a.agentId] = a; });
+      setAgentMap(map);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   useEffect(() => {
-    fetchData();
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
+    load();
+    const iv = setInterval(load, 30000);
+    return () => clearInterval(iv);
   }, []);
 
-  // Group records by agentId
-  const agentMap = {};
+  const groups = {};
   data.forEach((row) => {
-    const key = row.agentId;
-    if (!agentMap[key]) {
-      agentMap[key] = {
-        agentId: key,
-        agentName: row.agentName || key,
-        records: [],
-      };
-    }
-    agentMap[key].records.push(row);
+    if (!groups[row.agentId])
+      groups[row.agentId] = { agentName: row.agentName || row.agentId, rows: [] };
+    groups[row.agentId].rows.push(row);
   });
-  const agents = Object.values(agentMap);
 
   return (
-    <div className="min-h-screen bg-black text-white font-mono p-4">
-      {/* Header */}
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-yellow-400 tracking-widest uppercase">
-          Game Results
-        </h1>
-        {lastUpdated && (
-          <p className="text-xs text-gray-500 mt-1">
-            Updated: {lastUpdated.toLocaleTimeString()}
-          </p>
-        )}
-      </div>
+    <div className="min-h-screen bg-white text-black p-4">
+      <h1 className="text-base font-bold text-center mb-6 tracking-widest uppercase">
+        Game Results
+      </h1>
 
       {loading ? (
         <div className="flex justify-center mt-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-400"></div>
+          <div className="w-6 h-6 border-2 border-gray-400 border-t-black rounded-full animate-spin" />
         </div>
-      ) : agents.length === 0 ? (
-        <div className="text-center text-gray-500 mt-20 text-lg">
-          No game data available yet.
-        </div>
+      ) : Object.keys(groups).length === 0 ? (
+        <p className="text-center text-gray-400 mt-20 text-sm">No data yet.</p>
       ) : (
-        <div className="space-y-10 max-w-5xl mx-auto">
-          {agents.map((agent) => (
-            <AgentTable key={agent.agentId} agent={agent} />
+        <div className="max-w-2xl mx-auto space-y-10">
+          {Object.entries(groups).map(([agentId, { agentName, rows }]) => (
+            <AgentTable
+              key={agentId}
+              agentId={agentId}
+              agentName={agentName}
+              rows={rows}
+              agent={agentMap[agentId]}
+            />
           ))}
         </div>
       )}
@@ -77,88 +180,114 @@ export default function VisitorPage() {
   );
 }
 
-function AgentTable({ agent }) {
-  const totalGame = agent.records.reduce((s, r) => s + (r.totalGame || 0), 0);
-  const totalPanna = agent.records.reduce((s, r) => s + (r.totalWin?.panna || 0), 0);
-  const totalSingle = agent.records.reduce((s, r) => s + (r.totalWin?.single || 0), 0);
-  const totalJodi = agent.records.reduce((s, r) => s + (r.totalWin?.jodi || 0), 0);
-  const totalWin = totalPanna + totalSingle + totalJodi;
+function AgentTable({ agentId, agentName, rows, agent }) {
+  const calcs = rows.map((row) => calcRow(row, agent));
+
+  const totPanna  = rows.reduce((s, r) => s + (r.totalWin?.panna  || 0), 0);
+  const totSingle = rows.reduce((s, r) => s + (r.totalWin?.single || 0), 0);
+  const totJodi   = rows.reduce((s, r) => s + (r.totalWin?.jodi   || 0), 0);
+
+  const rawTotGame = rows.reduce((s, r) => s + (r.totalGame || 0), 0);
+  const totNetGame = calcs.reduce((s, c) => s + c.netGame, 0);
+  const totNetWin  = calcs.reduce((s, c) => s + c.netWin,  0);
+  const totPL      = totNetGame - totNetWin;
+  const totTag     = totPL >= 0 ? "BANKER" : "AGENT";
+
+  const N = rows.length;
+
+  const latestDate = rows.length > 0 && rows[0].createdAt
+    ? new Date(rows[0].createdAt).toLocaleDateString("en-GB")
+    : "";
+
+  const td = "border border-gray-400 px-2 py-1.5 text-sm";
+  const th = "border border-gray-400 px-2 py-1.5 text-sm font-semibold bg-gray-100";
+
+  function handlePrint() {
+    printAgentTable({ agentName, latestDate, rows, calcs, totPanna, totSingle, totJodi, rawTotGame, totNetGame, totNetWin });
+  }
 
   return (
-    <div className="bg-gray-900 border border-yellow-600/40 rounded-xl overflow-hidden shadow-lg">
-      {/* Agent Header */}
-      <div className="bg-gradient-to-r from-yellow-600/20 to-yellow-800/10 border-b border-yellow-600/30 px-5 py-3 flex items-center justify-between">
-        <div>
-          <span className="text-yellow-400 font-bold text-lg uppercase tracking-wider">
-            {agent.agentName}
-          </span>
-          <span className="ml-3 text-xs text-gray-400 bg-gray-800 px-2 py-0.5 rounded">
-            {agent.agentId}
-          </span>
-        </div>
-        <div className="text-xs text-gray-400">
-          {agent.records.length} game{agent.records.length !== 1 ? "s" : ""}
-        </div>
+    <div>
+      {/* Print button */}
+      <div className="flex justify-end mb-1">
+        <button
+          onClick={handlePrint}
+          className="text-xs px-3 py-1 border border-gray-300 rounded hover:bg-gray-100 text-gray-500 transition print:hidden">
+          🖨 Print
+        </button>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-gray-800/60 text-gray-400 uppercase text-xs tracking-wider">
-              <th className="px-4 py-3 text-left">#</th>
-              <th className="px-4 py-3 text-left">Game Name</th>
-              <th className="px-4 py-3 text-center">Total Game</th>
-              <th className="px-4 py-3 text-center text-purple-400">Panna</th>
-              <th className="px-4 py-3 text-center text-blue-400">Single</th>
-              <th className="px-4 py-3 text-center text-green-400">Jodi</th>
-              <th className="px-4 py-3 text-center text-yellow-400">Total Win</th>
+      <table className="w-full border-collapse">
+        <thead>
+          <tr>
+            <th className={`${th} text-left w-20`}>Market</th>
+            <th className={`${th} text-right w-24`}>Game</th>
+            <th className={`${th} text-center w-16`}>Pana</th>
+            <th className={`${th} text-center w-16`}>Single</th>
+            <th className={`${th} text-center w-28`}></th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i}>
+              <td className={`${td} text-left`}>{row.gameName}</td>
+              <td className={`${td} text-right font-mono`}>{row.totalGame}</td>
+              <td className={`${td} text-center`}>{row.totalWin?.panna  || ""}</td>
+              <td className={`${td} text-center`}>{row.totalWin?.single || ""}</td>
+              {i === 0 && (
+                <td className={`${td} text-center align-top`} rowSpan={N}>
+                  <div className="font-bold text-sm leading-tight">{agentName}</div>
+                  {latestDate && <div className="text-xs text-gray-500 mt-0.5">{latestDate}</div>}
+                </td>
+              )}
             </tr>
-          </thead>
-          <tbody>
-            {agent.records.map((row, idx) => {
-              const win = (row.totalWin?.panna || 0) + (row.totalWin?.single || 0) + (row.totalWin?.jodi || 0);
-              return (
-                <tr
-                  key={idx}
-                  className="border-t border-gray-800 hover:bg-gray-800/40 transition-colors">
-                  <td className="px-4 py-3 text-gray-500">{idx + 1}</td>
-                  <td className="px-4 py-3 font-semibold text-white">
-                    {row.gameName}
-                  </td>
-                  <td className="px-4 py-3 text-center text-gray-200">
-                    {row.totalGame}
-                  </td>
-                  <td className="px-4 py-3 text-center text-purple-300">
-                    {row.totalWin?.panna || 0}
-                  </td>
-                  <td className="px-4 py-3 text-center text-blue-300">
-                    {row.totalWin?.single || 0}
-                  </td>
-                  <td className="px-4 py-3 text-center text-green-300">
-                    {row.totalWin?.jodi || 0}
-                  </td>
-                  <td className="px-4 py-3 text-center font-bold text-yellow-300">
-                    {win}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-          {/* Summary row */}
-          <tfoot>
-            <tr className="bg-gray-800/80 border-t-2 border-yellow-600/40 font-bold text-sm">
-              <td colSpan={2} className="px-4 py-3 text-yellow-400 uppercase text-xs tracking-wider">
-                Total
-              </td>
-              <td className="px-4 py-3 text-center text-white">{totalGame}</td>
-              <td className="px-4 py-3 text-center text-purple-300">{totalPanna}</td>
-              <td className="px-4 py-3 text-center text-blue-300">{totalSingle}</td>
-              <td className="px-4 py-3 text-center text-green-300">{totalJodi}</td>
-              <td className="px-4 py-3 text-center text-yellow-300">{totalWin}</td>
-            </tr>
-          </tfoot>
-        </table>
+          ))}
+
+          <tr>
+            <td className={`${td} border-t-2 border-gray-500`} colSpan={4}></td>
+            <td className={`${td} border-t-2 border-gray-500`}>
+              <div className="text-xs text-gray-500">Pana</div>
+              <div className="font-mono font-semibold">{totPanna || "—"}</div>
+            </td>
+          </tr>
+          <tr>
+            <td className={td} colSpan={4}></td>
+            <td className={td}>
+              <div className="text-xs text-gray-500">Single</div>
+              <div className="font-mono font-semibold">{totSingle || "—"}</div>
+            </td>
+          </tr>
+          <tr>
+            <td className={td} colSpan={4}></td>
+            <td className={td}>
+              <div className="text-xs text-gray-500">Jodi</div>
+              <div className="font-mono font-semibold">{totJodi || "—"}</div>
+            </td>
+          </tr>
+          <tr>
+            <td className={`${td} border-t-2 border-gray-500`} colSpan={4}></td>
+            <td className={`${td} border-t-2 border-gray-500`}>
+              <div className={`font-bold text-sm ${totTag === "BANKER" ? "text-green-700" : "text-red-600"}`}>
+                {fmt(Math.abs(totPL))}
+              </div>
+              <div className={`text-xs font-bold tracking-wider ${totTag === "BANKER" ? "text-green-600" : "text-red-500"}`}>
+                {totTag}
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div className="mt-1 flex text-xs text-gray-600">
+        <div className="w-20"></div>
+        <div className="w-24 text-right pr-2 space-y-0.5">
+          <div className="font-mono">{fmt(rawTotGame)}</div>
+          <div className="font-mono border-t border-gray-400">{fmt(totNetGame)}</div>
+        </div>
+        <div className="pl-2 space-y-0.5 text-gray-400">
+          <div>Total Game</div>
+          <div>After Discount</div>
+        </div>
       </div>
     </div>
   );

@@ -1,79 +1,50 @@
-// middleware.js
-// Gatekeeper for admin and moderator routes.
-
 import { NextResponse } from "next/server";
 
-const adminProtectedRoutes = ["/admin"];
-const adminAuthRoutes = ["/admin/login"];
-const moderatorProtectedRoutes = ["/moderator"];
-
 export async function middleware(request) {
-  const url = request.nextUrl.clone();
-  const pathname = url.pathname;
+  const { pathname } = request.nextUrl;
 
-  // ========================
-  // ADMIN ROUTE PROTECTION
-  // ========================
-  const isAdminProtected = adminProtectedRoutes.some((route) =>
-    pathname.startsWith(route),
-  );
-  const isAdminAuthRoute = adminAuthRoutes.includes(pathname);
-
-  if (isAdminProtected) {
-    const adminCookie = request.cookies.get("admin-auth-N786");
-    const isAdminAuthenticated = adminCookie && adminCookie.value === "true";
-
-    if (!isAdminAuthenticated && !isAdminAuthRoute) {
-      url.pathname = "/admin/login";
-      return NextResponse.redirect(url);
-    }
-
-    if (isAdminAuthenticated && isAdminAuthRoute) {
-      url.pathname = "/admin";
-      return NextResponse.redirect(url);
+  // Admin route protection
+  if (pathname.startsWith("/admin") && pathname !== "/admin/login") {
+    const cookie = request.cookies.get("admin-auth");
+    if (!cookie || cookie.value !== "true") {
+      return NextResponse.redirect(new URL("/admin/login", request.url));
     }
   }
 
-  // =============================
-  // MODERATOR ROUTE PROTECTION
-  // =============================
-  const isModeratorProtected = moderatorProtectedRoutes.some((route) =>
-    pathname.startsWith(route),
-  );
+  // Redirect logged-in admin away from login page
+  if (pathname === "/admin/login") {
+    const cookie = request.cookies.get("admin-auth");
+    if (cookie?.value === "true") {
+      return NextResponse.redirect(new URL("/admin", request.url));
+    }
+  }
 
-  if (isModeratorProtected) {
-    const moderatorCookie = request.cookies.get("moderator-auth-N786");
-    let isModeratorAuthenticated = false;
-
-    if (moderatorCookie && moderatorCookie.value) {
-      try {
-        const session = JSON.parse(moderatorCookie.value);
-        // Only check moderatorId — assignedAgent is fetched live from DB
-        isModeratorAuthenticated = !!session.moderatorId;
-      } catch {
-        isModeratorAuthenticated = false;
+  // Moderator route protection
+  if (pathname.startsWith("/moderator")) {
+    const cookie = request.cookies.get("moderator-auth");
+    if (!cookie?.value) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+    try {
+      const session = JSON.parse(cookie.value);
+      if (!session.moderatorId) {
+        return NextResponse.redirect(new URL("/", request.url));
       }
-    }
-
-    if (!isModeratorAuthenticated) {
-      url.pathname = "/";
-      return NextResponse.redirect(url);
+    } catch {
+      return NextResponse.redirect(new URL("/", request.url));
     }
   }
 
-  // If authenticated moderator visits home page (/), redirect to /moderator
+  // Redirect logged-in moderator from login page to dashboard
   if (pathname === "/") {
-    const moderatorCookie = request.cookies.get("moderator-auth-N786");
-    if (moderatorCookie && moderatorCookie.value) {
+    const cookie = request.cookies.get("moderator-auth");
+    if (cookie?.value) {
       try {
-        const session = JSON.parse(moderatorCookie.value);
+        const session = JSON.parse(cookie.value);
         if (session.moderatorId) {
-          url.pathname = "/moderator";
-          return NextResponse.redirect(url);
+          return NextResponse.redirect(new URL("/moderator", request.url));
         }
-      } catch {
-        // Invalid cookie, let them see login page
-      }
+      } catch {}
     }
   }
 
@@ -81,5 +52,5 @@ export async function middleware(request) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/moderator/:path*", "/"],
+  matcher: ["/", "/admin/:path*", "/moderator/:path*"],
 };

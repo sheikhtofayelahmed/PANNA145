@@ -1,109 +1,49 @@
 "use client";
-
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, User, Users } from "lucide-react";
 
 export default function ModeratorLayout({ children }) {
   const router = useRouter();
-  const [moderatorId, setModeratorId] = useState("");
-  const [assignedAgent, setAssignedAgent] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [modId, setModId] = useState("");
+  const [ready, setReady] = useState(false);
 
-  const checkSession = useCallback(async () => {
-    try {
-      const res = await fetch("/api/moderator-session");
-      if (res.ok) {
-        const data = await res.json();
-        setModeratorId(data.moderatorId);
-        setAssignedAgent(data.assignedAgent);
-        return true;
-      } else {
-        router.push("/");
-        return false;
-      }
-    } catch {
-      router.push("/");
-      return false;
-    }
+  useEffect(() => {
+    fetch("/api/moderator-session")
+      .then((r) => {
+        if (!r.ok) { router.push("/"); return null; }
+        return r.json();
+      })
+      .then((d) => {
+        if (d) setModId(d.moderatorId);
+        setReady(true);
+      })
+      .catch(() => router.push("/"));
   }, [router]);
 
-  // Initial session check
-  useEffect(() => {
-    checkSession().finally(() => setLoading(false));
-  }, [checkSession]);
+  async function handleLogout() {
+    await fetch("/api/moderator-logout");
+    router.push("/");
+  }
 
-  // Poll for agent reassignment every 10 seconds
-  useEffect(() => {
-    if (loading) return;
-
-    const interval = setInterval(() => {
-      checkSession();
-    }, 10000);
-
-    return () => clearInterval(interval);
-  }, [loading, checkSession]);
-
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/moderator-logout", { method: "GET" });
-      localStorage.removeItem("moderatorId");
-      localStorage.removeItem("assignedAgent");
-      router.push("/");
-    } catch {
-      router.push("/");
-    }
-  };
-
-  if (loading) {
+  if (!ready) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-400"></div>
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen font-mono bg-gradient-to-br from-black via-gray-900 to-black text-white flex flex-col">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-black/95 backdrop-blur-sm border-b border-yellow-600 shadow-xl">
-        <div className="flex items-center justify-between p-4">
-          {/* Center: Session Info */}
-          <div className="hidden sm:flex items-center gap-4 text-sm">
-            <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-gray-800 border border-gray-700">
-              <User size={14} className="text-yellow-400" />
-              <span className="text-yellow-300">{moderatorId}</span>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-gray-800 border border-blue-700">
-              <Users size={14} className="text-blue-400" />
-              <span className="text-blue-300">Agent: {assignedAgent}</span>
-            </div>
-          </div>
-
-          {/* Right: Logout */}
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 text-sm font-semibold bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 text-white px-3 py-2 rounded-lg shadow-md transition-all">
-            <LogOut size={16} />
-            <span className="hidden sm:inline">Logout</span>
-          </button>
-        </div>
-
-        {/* Mobile: Session Info */}
-        <div className="sm:hidden flex items-center gap-2 px-4 pb-3 text-xs">
-          <div className="flex items-center gap-1 px-2 py-1 rounded bg-gray-800 border border-gray-700">
-            <User size={12} className="text-yellow-400" />
-            <span className="text-yellow-300">{moderatorId}</span>
-          </div>
-          <div className="flex items-center gap-1 px-2 py-1 rounded bg-gray-800 border border-blue-700">
-            <Users size={12} className="text-blue-400" />
-            <span className="text-blue-300">Agent: {assignedAgent}</span>
-          </div>
-        </div>
+    <div className="min-h-screen bg-gray-950 flex flex-col">
+      <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center justify-between">
+        <span className="text-yellow-400 font-bold text-sm">{modId}</span>
+        <button
+          onClick={handleLogout}
+          className="text-sm px-3 py-1 bg-red-700 hover:bg-red-600 rounded-lg transition">
+          Logout
+        </button>
       </header>
-
-      {/* Main Content */}
-      <main className="flex-1 p-4 sm:p-6">{children}</main>
+      <main className="flex-1 p-4">{children}</main>
     </div>
   );
 }

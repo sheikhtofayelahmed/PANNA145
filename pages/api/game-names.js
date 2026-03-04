@@ -2,26 +2,22 @@ import clientPromise from "lib/mongodb";
 
 export default async function handler(req, res) {
   const client = await clientPromise;
-  const db = client.db("noshib786");
+  const db = client.db("panna145");
   const col = db.collection("gameNames");
 
   if (req.method === "GET") {
-    const names = await col.find({}).sort({ createdAt: 1 }).toArray();
-    return res.status(200).json({ gameNames: names });
+    const list = await col.find({}).sort({ createdAt: 1 }).toArray();
+    return res.status(200).json({ gameNames: list });
   }
 
   if (req.method === "POST") {
     const { name } = req.body;
-    if (!name || !name.trim()) {
-      return res.status(400).json({ error: "Game name is required" });
-    }
+    if (!name?.trim()) return res.status(400).json({ error: "Name required" });
     const trimmed = name.trim().toUpperCase();
-    const existing = await col.findOne({ name: trimmed });
-    if (existing) {
-      return res.status(409).json({ error: "Game name already exists" });
-    }
+    const exists = await col.findOne({ name: trimmed });
+    if (exists) return res.status(409).json({ error: "Already exists" });
     await col.insertOne({ name: trimmed, createdAt: new Date() });
-    return res.status(201).json({ message: "Game name added" });
+    return res.status(201).json({ message: "Added" });
   }
 
   if (req.method === "DELETE") {
@@ -31,5 +27,5 @@ export default async function handler(req, res) {
     return res.status(200).json({ message: "Deleted" });
   }
 
-  return res.status(405).json({ error: "Method not allowed" });
+  return res.status(405).end();
 }

@@ -1,8 +1,9 @@
 import clientPromise from "lib/mongodb";
+import { ObjectId } from "mongodb";
 
 export default async function handler(req, res) {
   const client = await clientPromise;
-  const db = client.db("noshib786");
+  const db = client.db("panna145");
   const col = db.collection("visitorGameData");
 
   if (req.method === "GET") {
@@ -12,11 +13,10 @@ export default async function handler(req, res) {
 
   if (req.method === "POST") {
     const { agentId, agentName, gameName, totalGame, totalWin, moderatorId } = req.body;
-    if (!agentId || !gameName || totalGame == null) {
-      return res.status(400).json({ error: "agentId, gameName, totalGame are required" });
-    }
+    if (!agentId || !gameName || totalGame == null)
+      return res.status(400).json({ error: "agentId, gameName, totalGame required" });
 
-    const doc = {
+    await col.insertOne({
       agentId,
       agentName: agentName || agentId,
       gameName,
@@ -28,19 +28,24 @@ export default async function handler(req, res) {
       },
       moderatorId: moderatorId || "",
       createdAt: new Date(),
-    };
-
-    await col.insertOne(doc);
+    });
     return res.status(201).json({ message: "Saved" });
   }
 
   if (req.method === "DELETE") {
-    const { id } = req.body;
+    const { id, clearAll } = req.body;
+
+    // Clear all records
+    if (clearAll) {
+      await col.deleteMany({});
+      return res.status(200).json({ message: "All data cleared" });
+    }
+
+    // Delete single record
     if (!id) return res.status(400).json({ error: "id required" });
-    const { ObjectId } = await import("mongodb");
     await col.deleteOne({ _id: new ObjectId(id) });
     return res.status(200).json({ message: "Deleted" });
   }
 
-  return res.status(405).json({ error: "Method not allowed" });
+  return res.status(405).end();
 }

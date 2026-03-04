@@ -7,7 +7,10 @@
       "Bash(node -e \"console.log\\(process.cwd\\(\\)\\)\")",
       "Bash(node /tmp/saveall.js)",
       "Bash(node --no-experimental-strip-types /tmp/saveall.js)",
-      "Bash(node --version)"
+      "Bash(node --version)",
+      "Bash(xargs grep -l \"admin-login\\\\|admin-logout\\\\|mfa-verify\")",
+      "Bash(node extractapis.js)",
+      "Bash(node -e \"require\\(''canvas''\\)\")"
     ]
   }
 }

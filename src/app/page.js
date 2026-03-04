@@ -1,118 +1,76 @@
 "use client";
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-export default function ModeratorLoginPage() {
+export default function ModeratorLogin() {
   const router = useRouter();
   const [moderatorId, setModeratorId] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e) => {
+  async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
     setError("");
-
     try {
       const res = await fetch("/api/moderator-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ moderatorId, password }),
       });
-
       const data = await res.json();
-
       if (res.ok) {
-        // Store session info in localStorage for quick access
-        localStorage.setItem("moderatorId", data.moderatorId);
-        localStorage.setItem("assignedAgent", data.assignedAgent);
         router.push("/moderator");
       } else {
         setError(data.error || "Login failed");
       }
-    } catch (err) {
-      console.error("Login error:", err);
-      setError("Network error. Please try again.");
+    } catch {
+      setError("Network error");
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-black via-gray-900 to-black text-white relative overflow-hidden">
-      {/* Background decoration */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-20 left-20 w-32 h-32 rounded-full bg-yellow-500/20 blur-3xl"></div>
-        <div className="absolute bottom-32 right-20 w-40 h-40 rounded-full bg-purple-500/20 blur-3xl"></div>
-      </div>
+    <div className="min-h-screen flex items-center justify-center bg-gray-950 p-4">
+      <div className="w-full max-w-sm bg-gray-900 border border-gray-700 rounded-2xl p-8">
+        <h1 className="text-xl font-bold text-yellow-400 text-center mb-6">Moderator Login</h1>
 
-      {/* Login Card */}
-      <div className="relative z-10 w-full max-w-md px-4">
-        {/* Login Form */}
-        <form
-          onSubmit={handleLogin}
-          className="bg-gray-900/80 backdrop-blur-md p-8 rounded-2xl shadow-2xl border border-yellow-500/30">
-          <h2 className="text-2xl font-bold text-yellow-400 mb-6 text-center font-mono">
-            Moderator Login
-          </h2>
-
-          <div className="mb-4">
-            <label className="block text-yellow-300 text-sm font-bold mb-2">
-              Moderator ID
-            </label>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">Moderator ID</label>
             <input
               type="text"
-              placeholder="Enter your ID"
               value={moderatorId}
-              onChange={(e) =>
-                setModeratorId(e.target.value.replace(/\s/g, ""))
-              }
-              disabled={loading}
+              onChange={(e) => setModeratorId(e.target.value)}
               required
-              className="w-full p-3 rounded-lg bg-black/60 border-2 border-yellow-500/50 text-yellow-200 placeholder-yellow-600 focus:outline-none focus:border-yellow-400 transition-colors"
+              className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
             />
           </div>
-
-          <div className="mb-6">
-            <label className="block text-yellow-300 text-sm font-bold mb-2">
-              Password
-            </label>
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">Password</label>
             <input
               type="password"
-              placeholder="Enter password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              disabled={loading}
               required
-              className="w-full p-3 rounded-lg bg-black/60 border-2 border-yellow-500/50 text-yellow-200 placeholder-yellow-600 focus:outline-none focus:border-yellow-400 transition-colors"
+              className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
             />
           </div>
-
-          {error && (
-            <div className="mb-4 p-3 rounded-lg bg-red-900/50 border border-red-500 text-red-200 text-center text-sm">
-              {error}
-            </div>
-          )}
-
+          {error && <p className="text-red-400 text-sm text-center">{error}</p>}
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black font-bold py-3 rounded-lg transition-all duration-300 shadow-lg hover:shadow-yellow-500/30 disabled:opacity-50 disabled:cursor-not-allowed">
+            className="w-full py-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black font-bold rounded-lg transition">
             {loading ? "Logging in..." : "Login"}
           </button>
-
-          {/* Admin Login Link */}
-          <div className="mt-6 text-center">
-            <Link
-              href="/admin/login"
-              className="text-gray-500 hover:text-yellow-400 text-sm transition-colors">
-              Admin Login
-            </Link>
-          </div>
         </form>
+
+        <p className="text-center text-xs text-gray-600 mt-6">
+          <Link href="/admin/login" className="hover:text-gray-400 transition">Admin →</Link>
+        </p>
       </div>
     </div>
   );

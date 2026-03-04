@@ -1,287 +1,259 @@
 "use client";
-
 import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
 
-export default function VisitorGameEntry({ agentId, agentName, moderatorId }) {
+function calcRow(row, agent) {
+  const gameDisc = (agent?.gameDiscount || 0) / 100;
+  const winDisc = (agent?.winDiscount || 0) / 100;
+  const eligible = agent?.winDiscountEligible || false;
+
+  const rawGame = row.totalGame || 0;
+  const rawWin =
+    (row.totalWin?.panna || 0) * 145 +
+    (row.totalWin?.single || 0) * 9 +
+    (row.totalWin?.jodi || 0) * 80;
+
+  const netGame = rawGame * (1 - gameDisc);
+  const applyWinDisc = eligible && rawWin < rawGame;
+  const netWin = applyWinDisc ? rawWin * (1 - winDisc) : rawWin;
+  const pl = netGame - netWin;
+  const tag = pl >= 0 ? "BANKER" : "AGENT";
+
+  return { rawGame, rawWin, netGame, netWin, pl, tag };
+}
+
+function fmt(n) { return Math.round(n).toLocaleString(); }
+
+export default function VisitorGameEntry() {
+  const [agents, setAgents] = useState([]);
   const [gameNames, setGameNames] = useState([]);
   const [records, setRecords] = useState([]);
-  const [loadingNames, setLoadingNames] = useState(true);
-  const [loadingRecords, setLoadingRecords] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [toast, setToast] = useState({ type: "", message: "" });
 
-  // Form state
-  const [selectedGame, setSelectedGame] = useState("");
+  const [agentId, setAgentId] = useState("");
+  const [gameName, setGameName] = useState("");
   const [totalGame, setTotalGame] = useState("");
   const [panna, setPanna] = useState("");
   const [single, setSingle] = useState("");
   const [jodi, setJodi] = useState("");
 
-  const showToast = (type, message) => {
-    setToast({ type, message });
-    setTimeout(() => setToast({ type: "", message: "" }), 3000);
-  };
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState({ type: "", text: "" });
 
-  const fetchGameNames = async () => {
-    try {
-      const res = await fetch("/api/game-names");
-      if (res.ok) {
-        const data = await res.json();
-        setGameNames(data.gameNames || []);
-        if (data.gameNames?.length > 0) {
-          setSelectedGame(data.gameNames[0].name);
-        }
-      }
-    } finally {
-      setLoadingNames(false);
-    }
-  };
+  function flash(type, text) {
+    setMsg({ type, text });
+    setTimeout(() => setMsg({ type: "", text: "" }), 3000);
+  }
 
-  const fetchRecords = async () => {
-    try {
-      const res = await fetch("/api/visitor-game-data");
-      if (res.ok) {
-        const data = await res.json();
-        // Filter to only this agent's records
-        const mine = (data.data || []).filter((r) => r.agentId === agentId);
-        setRecords(mine);
-      }
-    } finally {
-      setLoadingRecords(false);
-    }
-  };
+  async function loadAgents() {
+    const res = await fetch("/api/get-all-agents");
+    const data = await res.json();
+    const list = data.agents || [];
+    setAgents(list);
+    if (list.length > 0 && !agentId) setAgentId(list[0].agentId);
+  }
+
+  async function loadGameNames() {
+    const res = await fetch("/api/game-names");
+    const data = await res.json();
+    const list = data.gameNames || [];
+    setGameNames(list);
+    if (list.length > 0 && !gameName) setGameName(list[0].name);
+  }
+
+  async function loadRecords() {
+    const res = await fetch("/api/visitor-game-data");
+    const data = await res.json();
+    setRecords(data.data || []);
+  }
 
   useEffect(() => {
-    fetchGameNames();
-    fetchRecords();
-  }, [agentId]);
+    loadAgents();
+    loadGameNames();
+    loadRecords();
+  }, []);
 
-  const handleSubmit = async (e) => {
+  const selectedAgent = agents.find((a) => a.agentId === agentId);
+  const previewRow = {
+    totalGame: Number(totalGame || 0),
+    totalWin: { panna: Number(panna || 0), single: Number(single || 0), jodi: Number(jodi || 0) },
+  };
+  const preview = totalGame ? calcRow(previewRow, selectedAgent) : null;
+
+  async function handleSubmit(e) {
     e.preventDefault();
-    if (!selectedGame || !totalGame) {
-      showToast("error", "Please fill game name and total game");
+    if (!agentId || !gameName || !totalGame) {
+      flash("error", "Fill all required fields");
       return;
     }
-    setSubmitting(true);
+    setSaving(true);
     try {
       const res = await fetch("/api/visitor-game-data", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           agentId,
-          agentName,
-          gameName: selectedGame,
+          agentName: selectedAgent?.name || agentId,
+          gameName,
           totalGame: Number(totalGame),
           totalWin: {
             panna: Number(panna || 0),
             single: Number(single || 0),
             jodi: Number(jodi || 0),
           },
-          moderatorId,
         }),
       });
       if (res.ok) {
-        showToast("success", "Saved to visitor page");
-        setTotalGame("");
-        setPanna("");
-        setSingle("");
-        setJodi("");
-        fetchRecords();
+        flash("success", "Saved!");
+        setTotalGame(""); setPanna(""); setSingle(""); setJodi("");
+        loadRecords();
       } else {
         const d = await res.json();
-        showToast("error", d.error || "Failed to save");
+        flash("error", d.error || "Failed");
       }
-    } catch {
-      showToast("error", "Network error");
     } finally {
-      setSubmitting(false);
+      setSaving(false);
     }
-  };
+  }
 
-  const handleDelete = async (id) => {
-    if (!confirm("Delete this record?")) return;
-    try {
-      const res = await fetch("/api/visitor-game-data", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
-      });
-      if (res.ok) {
-        showToast("success", "Deleted");
-        fetchRecords();
-      } else {
-        showToast("error", "Failed to delete");
-      }
-    } catch {
-      showToast("error", "Network error");
-    }
-  };
+  async function handleDelete(id) {
+    if (!confirm("Delete?")) return;
+    await fetch("/api/visitor-game-data", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    flash("success", "Deleted");
+    loadRecords();
+  }
+
+  const agentMap = {};
+  agents.forEach((a) => { agentMap[a.agentId] = a; });
+
+  const agentRecords = records.filter((r) => r.agentId === agentId);
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <h2 className="text-lg font-bold text-yellow-400 uppercase tracking-wider">
-        Visitor Page Entry
-      </h2>
-      <p className="text-xs text-gray-400">
-        Agent: <span className="text-blue-300">{agentName}</span>
-      </p>
-
-      {/* Toast */}
-      {toast.message && (
-        <div
-          className={`px-4 py-2 rounded-lg text-sm font-semibold text-center ${
-            toast.type === "success"
-              ? "bg-green-900/60 border border-green-500 text-green-300"
-              : "bg-red-900/60 border border-red-500 text-red-300"
-          }`}>
-          {toast.message}
-        </div>
+    <div className="space-y-6">
+      {msg.text && (
+        <p className={`text-sm text-center py-2 rounded-lg ${msg.type === "success" ? "bg-green-900/50 text-green-300" : "bg-red-900/50 text-red-300"}`}>
+          {msg.text}
+        </p>
       )}
 
-      {/* Entry Form */}
-      <form
-        onSubmit={handleSubmit}
-        className="bg-gray-900 border border-gray-700 rounded-xl p-5 space-y-4">
-        {/* Game Name */}
+      <form onSubmit={handleSubmit} className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
         <div>
-          <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wider">
-            Game Name
-          </label>
-          {loadingNames ? (
-            <div className="text-gray-500 text-sm">Loading...</div>
-          ) : gameNames.length === 0 ? (
-            <div className="text-red-400 text-sm">
-              No game names configured. Ask admin to add game names.
-            </div>
+          <label className="block text-xs text-gray-500 mb-1 uppercase tracking-wider">Agent *</label>
+          {agents.length === 0 ? (
+            <p className="text-sm text-red-400">No agents found</p>
           ) : (
-            <select
-              value={selectedGame}
-              onChange={(e) => setSelectedGame(e.target.value)}
-              required
-              className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-600 text-white focus:outline-none focus:border-yellow-500 text-sm">
-              {gameNames.map((g) => (
-                <option key={g.name} value={g.name}>
-                  {g.name}
-                </option>
+            <select value={agentId} onChange={(e) => setAgentId(e.target.value)}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none">
+              {agents.map((a) => (
+                <option key={a.agentId} value={a.agentId}>{a.name || a.agentId}</option>
               ))}
             </select>
           )}
         </div>
 
-        {/* Total Game */}
         <div>
-          <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wider">
-            Total Game
-          </label>
-          <input
-            type="number"
-            min="0"
-            value={totalGame}
-            onChange={(e) => setTotalGame(e.target.value)}
-            placeholder="0"
-            required
-            className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-600 text-white placeholder-gray-600 focus:outline-none focus:border-yellow-500 text-sm"
-          />
+          <label className="block text-xs text-gray-500 mb-1 uppercase tracking-wider">Game Name *</label>
+          {gameNames.length === 0 ? (
+            <p className="text-sm text-red-400">No game names — ask admin to add some</p>
+          ) : (
+            <select value={gameName} onChange={(e) => setGameName(e.target.value)}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none">
+              {gameNames.map((g) => (
+                <option key={g.name} value={g.name}>{g.name}</option>
+              ))}
+            </select>
+          )}
         </div>
 
-        {/* Total Win */}
         <div>
-          <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">
-            Total Win
-          </label>
+          <label className="block text-xs text-gray-500 mb-1 uppercase tracking-wider">Total Game *</label>
+          <input type="number" min="0" value={totalGame} onChange={(e) => setTotalGame(e.target.value)}
+            placeholder="0" required
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none" />
+        </div>
+
+        <div>
+          <label className="block text-xs text-gray-500 mb-2 uppercase tracking-wider">Total Win</label>
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs text-purple-400 mb-1">Panna</label>
-              <input
-                type="number"
-                min="0"
-                value={panna}
-                onChange={(e) => setPanna(e.target.value)}
-                placeholder="0"
-                className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-purple-800/50 text-white placeholder-gray-600 focus:outline-none focus:border-purple-500 text-sm"
-              />
+              <label className="block text-xs text-gray-500 mb-1">Panna ×145</label>
+              <input type="number" min="0" value={panna} onChange={(e) => setPanna(e.target.value)} placeholder="0"
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none" />
             </div>
             <div>
-              <label className="block text-xs text-blue-400 mb-1">Single</label>
-              <input
-                type="number"
-                min="0"
-                value={single}
-                onChange={(e) => setSingle(e.target.value)}
-                placeholder="0"
-                className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-blue-800/50 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 text-sm"
-              />
+              <label className="block text-xs text-gray-500 mb-1">Single ×9</label>
+              <input type="number" min="0" value={single} onChange={(e) => setSingle(e.target.value)} placeholder="0"
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none" />
             </div>
             <div>
-              <label className="block text-xs text-green-400 mb-1">Jodi</label>
-              <input
-                type="number"
-                min="0"
-                value={jodi}
-                onChange={(e) => setJodi(e.target.value)}
-                placeholder="0"
-                className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-green-800/50 text-white placeholder-gray-600 focus:outline-none focus:border-green-500 text-sm"
-              />
+              <label className="block text-xs text-gray-500 mb-1">Jodi ×80</label>
+              <input type="number" min="0" value={jodi} onChange={(e) => setJodi(e.target.value)} placeholder="0"
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none" />
             </div>
           </div>
         </div>
 
-        <button
-          type="submit"
-          disabled={submitting || gameNames.length === 0}
-          className="w-full flex items-center justify-center gap-2 py-3 bg-yellow-500 hover:bg-yellow-400 disabled:bg-gray-700 disabled:text-gray-500 text-black font-bold rounded-lg transition text-sm">
-          <Plus size={16} />
-          {submitting ? "Saving..." : "Add to Visitor Page"}
+        {preview && (
+          <div className="bg-gray-800 rounded-lg px-4 py-3 text-sm grid grid-cols-3 gap-2 text-center">
+            <div>
+              <div className="text-xs text-gray-500">Net Game</div>
+              <div className="font-mono font-bold">{fmt(preview.netGame)}</div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-500">Net Win</div>
+              <div className="font-mono font-bold">{fmt(preview.netWin)}</div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-500">P/L</div>
+              <div className={`font-mono font-bold ${preview.tag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
+                {fmt(Math.abs(preview.pl))} <span className="text-xs">{preview.tag}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <button type="submit" disabled={saving || agents.length === 0 || gameNames.length === 0}
+          className="w-full py-2 bg-white hover:bg-gray-200 disabled:opacity-50 text-black font-bold rounded-lg text-sm transition">
+          {saving ? "Saving..." : "Save"}
         </button>
       </form>
 
-      {/* Existing Records for this agent */}
       <div>
-        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">
-          My Entries ({records.length})
+        <h3 className="text-xs text-gray-500 uppercase tracking-wider mb-3">
+          Entries ({agentRecords.length})
         </h3>
-        {loadingRecords ? (
-          <div className="text-gray-500 text-sm text-center py-4">Loading...</div>
-        ) : records.length === 0 ? (
-          <div className="text-gray-600 text-sm text-center py-6 border border-dashed border-gray-700 rounded-lg">
-            No entries yet.
-          </div>
+        {agentRecords.length === 0 ? (
+          <p className="text-center text-gray-700 text-sm py-6 border border-dashed border-gray-800 rounded-lg">No entries yet</p>
         ) : (
           <div className="space-y-2">
-            {records.map((r, idx) => {
-              const totalWin =
-                (r.totalWin?.panna || 0) +
-                (r.totalWin?.single || 0) +
-                (r.totalWin?.jodi || 0);
+            {agentRecords.map((r, i) => {
+              const { netGame, netWin, pl, tag } = calcRow(r, agentMap[r.agentId]);
               return (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-sm">
-                  <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div key={r._id || i} className="flex items-center justify-between bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-xs">
+                  <div className="grid grid-cols-4 gap-3 flex-1">
                     <div>
-                      <div className="text-xs text-gray-500">Game</div>
-                      <div className="font-semibold text-white">{r.gameName}</div>
+                      <div className="text-gray-600">Game</div>
+                      <div className="text-gray-200">{r.gameName}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-gray-500">Total</div>
-                      <div className="text-gray-200">{r.totalGame}</div>
+                      <div className="text-gray-600">Net Game</div>
+                      <div className="font-mono">{fmt(netGame)}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-gray-500">Win</div>
-                      <div className="text-yellow-300 font-bold">{totalWin}</div>
+                      <div className="text-gray-600">Net Win</div>
+                      <div className="font-mono">{fmt(netWin)}</div>
                     </div>
-                    <div className="text-xs text-gray-500 flex flex-col">
-                      <span>P: {r.totalWin?.panna || 0}</span>
-                      <span>S: {r.totalWin?.single || 0}</span>
-                      <span>J: {r.totalWin?.jodi || 0}</span>
+                    <div>
+                      <div className="text-gray-600">P/L</div>
+                      <div className={`font-mono font-bold ${tag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
+                        {fmt(Math.abs(pl))} {tag}
+                      </div>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleDelete(r._id)}
-                    className="ml-3 p-1.5 text-red-400 hover:bg-red-900/40 rounded transition">
-                    <Trash2 size={14} />
-                  </button>
+                  <button onClick={() => handleDelete(r._id)}
+                    className="ml-3 text-gray-600 hover:text-red-400 transition text-base">×</button>
                 </div>
               );
             })}

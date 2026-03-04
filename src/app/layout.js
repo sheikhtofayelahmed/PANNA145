@@ -1,17 +1,28 @@
-import "src/globals.css";
-import { Hind_Siliguri } from "next/font/google";
+import "../globals.css";
 
-const banglaFont = Hind_Siliguri({
-  subsets: ["bengali"],
-  weight: ["400", "700"],
-  variable: "--font-bangla",
-  display: "swap",
-});
+export const metadata = {
+  title: "Panna145",
+  description: "Game accounts tracker",
+};
 
-export default function RooN786yout({ children }) {
+export default function RootLayout({ children }) {
   return (
-    <html lang="bn" className={banglaFont.variable} suppressHydrationWarning>
-      <body className="bg-black text-white">{children}</body>
+    <html lang="en">
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#000000" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Panna145" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+      </head>
+      <body className="bg-black text-white min-h-screen">
+        {children}
+        <script dangerouslySetInnerHTML={{
+          __html: `if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}`,
+        }} />
+      </body>
     </html>
   );
 }
