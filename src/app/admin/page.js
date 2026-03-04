@@ -158,6 +158,27 @@ export default function AdminHome() {
   const grandPL   = rows.reduce((s, r) => s + r.pl,      0);
   const grandTag  = grandPL >= 0 ? "BANKER" : "AGENT";
 
+  function shareWhatsApp() {
+    const date = new Date().toLocaleDateString("en-GB");
+    const lines = [
+      `📊 *Game Summary — ${date}*`,
+      "",
+      ...rows.map((r) =>
+        `*${r.agentName}*\n` +
+        `Game: ${fmt(r.netGame)}  Win: ${fmt(r.rawWin)}\n` +
+        `P/L: ${fmt(Math.abs(r.pl))} ${r.tag}` +
+        (r.winDiscApplied ? " _(W.disc)_" : "")
+      ),
+      "",
+      `─────────────`,
+      `*TOTAL*`,
+      `Game: ${fmt(grandGame)}  Win: ${fmt(grandWin)}`,
+      `P/L: ${fmt(Math.abs(grandPL))} ${grandTag}`,
+    ];
+    const text = lines.join("\n");
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  }
+
   const th = "border border-gray-600 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-400";
   const td = "border border-gray-700 px-3 py-2 text-sm";
 
@@ -167,11 +188,18 @@ export default function AdminHome() {
         <h1 className="text-lg font-bold text-yellow-400 uppercase tracking-widest">Summary</h1>
         <div className="flex gap-2">
           {rows.length > 0 && (
-            <button
-              onClick={() => printSummary(rows, grandGame, grandWin, grandPL, grandTag)}
-              className="px-4 py-1.5 text-xs border border-gray-600 hover:bg-gray-800 text-gray-300 font-bold rounded-lg transition">
-              🖨 Print
-            </button>
+            <>
+              <button
+                onClick={shareWhatsApp}
+                className="px-4 py-1.5 text-xs border border-green-700 hover:bg-green-900/40 text-green-400 font-bold rounded-lg transition">
+                WhatsApp
+              </button>
+              <button
+                onClick={() => printSummary(rows, grandGame, grandWin, grandPL, grandTag)}
+                className="px-4 py-1.5 text-xs border border-gray-600 hover:bg-gray-800 text-gray-300 font-bold rounded-lg transition">
+                🖨 Print
+              </button>
+            </>
           )}
           <button
             onClick={handleClearAll}

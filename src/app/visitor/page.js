@@ -243,9 +243,38 @@ function AgentTable({ agentId, agentName, rows, agent, gameNames }) {
     printAgentTable({ agentName, latestDate, gameNames, dataMap, totPanna, totSingle, totJodi, rawTotWin, rawTotGame, totNetGame, totPL, applyWinDisc });
   }
 
+  function handleWhatsApp() {
+    const lines = [
+      `📋 *${agentName}*${latestDate ? ` — ${latestDate}` : ""}`,
+      "",
+      ...gameNames.map((gn) => {
+        const row = dataMap[gn];
+        if (!row) return `${gn}: —`;
+        const p = row.totalWin?.panna  || 0;
+        const s = row.totalWin?.single || 0;
+        const j = row.totalWin?.jodi   || 0;
+        const wins = [p && `P:${p}`, s && `S:${s}`, j && `J:${j}`].filter(Boolean).join(" ") || "—";
+        return `*${gn}*  Game:${row.totalGame}  ${wins}`;
+      }),
+      "",
+      `Pana: ${totPanna || "—"}  Single: ${totSingle || "—"}  Jodi: ${totJodi || "—"}`,
+      `Total Win: ${fmt(rawTotWin)}`,
+      `─────────────`,
+      `*${fmt(Math.abs(totPL))} ${totTag}*` + (applyWinDisc ? " _(W.disc)_" : ""),
+      `Game: ${fmt(rawTotGame)}  After Disc: ${fmt(totNetGame)}`,
+    ];
+    const text = lines.join("\n");
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  }
+
   return (
     <div>
-      <div className="flex justify-end mb-1">
+      <div className="flex justify-end gap-2 mb-1">
+        <button
+          onClick={handleWhatsApp}
+          className="text-xs px-3 py-1 border border-green-400 rounded hover:bg-green-50 text-green-600 transition print:hidden">
+          WhatsApp
+        </button>
         <button
           onClick={handlePrint}
           className="text-xs px-3 py-1 border border-gray-300 rounded hover:bg-gray-100 text-gray-500 transition print:hidden">
