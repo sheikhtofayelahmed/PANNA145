@@ -13,10 +13,10 @@ function calcRow(row, agent) {
   const netGame      = rawGame * (1 - gameDisc);
   const applyWinDisc = winDisc > 0 && rawWin < rawGame;
   const initialPL    = netGame - rawWin;
+  // Win discount reduces P/L only — Total Win stays as rawWin
   const pl           = applyWinDisc ? initialPL * (1 - winDisc) : initialPL;
-  const netWin       = netGame - pl;
   const tag = pl >= 0 ? "BANKER" : "AGENT";
-  return { rawGame, rawWin, netGame, netWin, pl, tag, applyWinDisc };
+  return { rawGame, rawWin, netGame, pl, tag, applyWinDisc };
 }
 
 function fmt(n) { return Math.round(n).toLocaleString(); }
@@ -194,15 +194,16 @@ function AgentTable({ agentId, agentName, rows, agent, gameNames }) {
   const dataRows = rows.filter((r) => r.totalGame);
   const calcs    = dataRows.map((r) => calcRow(r, agent));
 
-  const totPanna  = dataRows.reduce((s, r) => s + (r.totalWin?.panna  || 0), 0);
-  const totSingle = dataRows.reduce((s, r) => s + (r.totalWin?.single || 0), 0);
-  const totJodi   = dataRows.reduce((s, r) => s + (r.totalWin?.jodi   || 0), 0);
+  const totPanna   = dataRows.reduce((s, r) => s + (r.totalWin?.panna  || 0), 0);
+  const totSingle  = dataRows.reduce((s, r) => s + (r.totalWin?.single || 0), 0);
+  const totJodi    = dataRows.reduce((s, r) => s + (r.totalWin?.jodi   || 0), 0);
 
   const rawTotGame = dataRows.reduce((s, r) => s + (r.totalGame || 0), 0);
   const totNetGame = calcs.reduce((s, c) => s + c.netGame, 0);
-  const totNetWin  = calcs.reduce((s, c) => s + c.netWin,  0);
-  const totPL      = totNetGame - totNetWin;
+  // Sum individual P/Ls (each already has win discount applied)
+  const totPL      = calcs.reduce((s, c) => s + c.pl, 0);
   const totTag     = totPL >= 0 ? "BANKER" : "AGENT";
+  const totNetWin  = totNetGame - totPL; // only used for print reference
 
   const latestDate = rows.length > 0 && rows[0].createdAt
     ? new Date(rows[0].createdAt).toLocaleDateString("en-GB")
