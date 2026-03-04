@@ -107,6 +107,7 @@ export default function VisitorPage() {
   const [agentMap, setAgentMap]   = useState({});
   const [gameNames, setGameNames] = useState([]);
   const [loading, setLoading]     = useState(true);
+  const [search, setSearch]       = useState("");
 
   async function load() {
     try {
@@ -141,11 +142,44 @@ export default function VisitorPage() {
     groups[row.agentId].rows.push(row);
   });
 
+  const q = search.trim().toLowerCase();
+  const filteredEntries = Object.entries(groups).filter(([agentId, { agentName }]) =>
+    !q ||
+    agentName.toLowerCase().includes(q) ||
+    agentId.toLowerCase().includes(q)
+  );
+
   return (
     <div className="min-h-screen bg-white text-black p-4">
-      <h1 className="text-base font-bold text-center mb-6 tracking-widest uppercase">
+      <h1 className="text-base font-bold text-center mb-4 tracking-widest uppercase">
         Game Results
       </h1>
+
+      {/* Search bar */}
+      <div className="max-w-2xl mx-auto mb-6">
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search agent..."
+            className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm text-black placeholder-gray-400 focus:outline-none focus:border-gray-500"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black text-lg leading-none">
+              ×
+            </button>
+          )}
+        </div>
+        {q && (
+          <p className="text-xs text-gray-400 mt-1 pl-1">
+            {filteredEntries.length} of {Object.keys(groups).length} agent{Object.keys(groups).length !== 1 ? "s" : ""}
+          </p>
+        )}
+      </div>
 
       {loading ? (
         <div className="flex justify-center mt-20">
@@ -153,9 +187,11 @@ export default function VisitorPage() {
         </div>
       ) : Object.keys(groups).length === 0 ? (
         <p className="text-center text-gray-400 mt-20 text-sm">No data yet.</p>
+      ) : filteredEntries.length === 0 ? (
+        <p className="text-center text-gray-400 mt-20 text-sm">No agent found for "{search}".</p>
       ) : (
         <div className="max-w-2xl mx-auto space-y-10">
-          {Object.entries(groups).map(([agentId, { agentName, rows }]) => (
+          {filteredEntries.map(([agentId, { agentName, rows }]) => (
             <AgentTable
               key={agentId}
               agentId={agentId}
