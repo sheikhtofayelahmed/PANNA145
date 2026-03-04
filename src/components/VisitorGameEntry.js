@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 function calcRow(row, agent) {
   const gameDisc = (agent?.gameDiscount || 0) / 100;
   const winDisc = (agent?.winDiscount || 0) / 100;
-  
 
   const rawGame = row.totalGame || 0;
   const rawWin =
@@ -14,11 +13,12 @@ function calcRow(row, agent) {
 
   const netGame = rawGame * (1 - gameDisc);
   const applyWinDisc = winDisc > 0 && rawWin < rawGame;
-  const netWin = applyWinDisc ? rawWin * (1 - winDisc) : rawWin;
-  const pl = netGame - netWin;
+  const initialPL = netGame - rawWin;
+  const pl = applyWinDisc ? initialPL * (1 - winDisc) : initialPL;
+  const netWin = netGame - pl;
   const tag = pl >= 0 ? "BANKER" : "AGENT";
 
-  return { rawGame, rawWin, netGame, netWin, pl, tag };
+  return { rawGame, rawWin, netGame, netWin, pl, tag, applyWinDisc };
 }
 
 function fmt(n) { return Math.round(n).toLocaleString(); }
@@ -115,7 +115,7 @@ export default function VisitorGameEntry() {
   }
 
   async function handleDelete(id) {
-    if (!confirm("Delete?")) return;
+    if (!confirm("Delete this entry?")) return;
     await fetch("/api/visitor-game-data", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -125,10 +125,21 @@ export default function VisitorGameEntry() {
     loadRecords();
   }
 
+  // Build agent map for quick lookup
   const agentMap = {};
   agents.forEach((a) => { agentMap[a.agentId] = a; });
 
-  const agentRecords = records.filter((r) => r.agentId === agentId);
+  // Group all records by agentId, preserving agent order from agents list
+  const agentGroups = [];
+  agents.forEach((a) => {
+    const agentRecs = records.filter((r) => r.agentId === a.agentId);
+    if (agentRecs.length > 0) {
+      // Build a map: gameName -> record
+      const recByGame = {};
+      agentRecs.forEach((r) => { recByGame[r.gameName] = r; });
+      agentGroups.push({ agent: a, recByGame, agentRecs });
+    }
+  });
 
   return (
     <div className="space-y-6">
@@ -138,6 +149,7 @@ export default function VisitorGameEntry() {
         </p>
       )}
 
+      {/* Entry Form */}
       <form onSubmit={handleSubmit} className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
         <div>
           <label className="block text-xs text-gray-500 mb-1 uppercase tracking-wider">Agent *</label>
@@ -220,44 +232,130 @@ export default function VisitorGameEntry() {
         </button>
       </form>
 
-      <div>
-        <h3 className="text-xs text-gray-500 uppercase tracking-wider mb-3">
-          Entries ({agentRecords.length})
+      {/* Entries — grouped by agent, game names in serial order */}
+      <div className="space-y-5">
+        <h3 className="text-xs text-gray-500 uppercase tracking-wider">
+          All Entries ({records.length})
         </h3>
-        {agentRecords.length === 0 ? (
+
+        {agentGroups.length === 0 ? (
           <p className="text-center text-gray-700 text-sm py-6 border border-dashed border-gray-800 rounded-lg">No entries yet</p>
         ) : (
-          <div className="space-y-2">
-            {agentRecords.map((r, i) => {
-              const { netGame, netWin, pl, tag } = calcRow(r, agentMap[r.agentId]);
-              return (
-                <div key={r._id || i} className="flex items-center justify-between bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-xs">
-                  <div className="grid grid-cols-4 gap-3 flex-1">
-                    <div>
-                      <div className="text-gray-600">Game</div>
-                      <div className="text-gray-200">{r.gameName}</div>
-                    </div>
-                    <div>
-                      <div className="text-gray-600">Net Game</div>
-                      <div className="font-mono">{fmt(netGame)}</div>
-                    </div>
-                    <div>
-                      <div className="text-gray-600">Net Win</div>
-                      <div className="font-mono">{fmt(netWin)}</div>
-                    </div>
-                    <div>
-                      <div className="text-gray-600">P/L</div>
-                      <div className={`font-mono font-bold ${tag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
-                        {fmt(Math.abs(pl))} {tag}
-                      </div>
-                    </div>
-                  </div>
-                  <button onClick={() => handleDelete(r._id)}
-                    className="ml-3 text-gray-600 hover:text-red-400 transition text-base">×</button>
+          agentGroups.map(({ agent, recByGame, agentRecs }) => {
+            // Calculate agent totals
+            let totalNetGame = 0, totalRawWin = 0, totalNetWin = 0, totalPL = 0;
+            let anyWinDisc = false;
+            agentRecs.forEach((r) => {
+              const c = calcRow(r, agent);
+              totalNetGame += c.netGame;
+              totalRawWin += c.rawWin;
+              totalNetWin += c.netWin;
+              totalPL += c.pl;
+              if (c.applyWinDisc) anyWinDisc = true;
+            });
+            const totalTag = totalPL >= 0 ? "BANKER" : "AGENT";
+
+            return (
+              <div key={agent.agentId} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+                {/* Agent header */}
+                <div className="px-4 py-2.5 bg-gray-800 border-b border-gray-700 flex items-center justify-between">
+                  <span className="font-bold text-yellow-400 text-sm">{agent.name || agent.agentId}</span>
+                  <span className="text-xs text-gray-500">{agent.agentId}</span>
                 </div>
-              );
-            })}
-          </div>
+
+                {/* Game name rows in serial order */}
+                <div className="divide-y divide-gray-800">
+                  {/* Column headers */}
+                  <div className="grid grid-cols-[1fr_80px_80px_80px_90px_32px] gap-1 px-3 py-1.5 text-xs text-gray-600 uppercase tracking-wider">
+                    <span>Game</span>
+                    <span className="text-right">Game</span>
+                    <span className="text-right">Win</span>
+                    <span className="text-right">Net Win</span>
+                    <span className="text-right">P/L</span>
+                    <span></span>
+                  </div>
+
+                  {gameNames.map((gn) => {
+                    const r = recByGame[gn.name];
+                    if (!r) {
+                      return (
+                        <div key={gn.name} className="grid grid-cols-[1fr_80px_80px_80px_90px_32px] gap-1 px-3 py-2 text-xs text-gray-700">
+                          <span className="text-gray-600">{gn.name}</span>
+                          <span className="text-right">—</span>
+                          <span className="text-right">—</span>
+                          <span className="text-right">—</span>
+                          <span className="text-right">—</span>
+                          <span></span>
+                        </div>
+                      );
+                    }
+                    const { netGame, rawWin, netWin, pl, tag, applyWinDisc } = calcRow(r, agent);
+                    return (
+                      <div key={gn.name} className="grid grid-cols-[1fr_80px_80px_80px_90px_32px] gap-1 px-3 py-2 text-xs items-center">
+                        <span className="text-gray-200">{gn.name}</span>
+                        <span className="text-right font-mono text-gray-300">{fmt(netGame)}</span>
+                        <span className="text-right font-mono text-gray-300">
+                          {fmt(rawWin)}
+                          {applyWinDisc && (
+                            <div className="text-blue-400 text-[10px]">↓{fmt(netWin)}</div>
+                          )}
+                        </span>
+                        <span className="text-right font-mono text-gray-300">{fmt(netWin)}</span>
+                        <span className={`text-right font-mono font-bold text-[10px] ${tag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
+                          {fmt(Math.abs(pl))} {tag}
+                        </span>
+                        <button onClick={() => handleDelete(r._id)}
+                          className="text-gray-700 hover:text-red-400 transition text-base text-center">×</button>
+                      </div>
+                    );
+                  })}
+
+                  {/* Also show entries for game names not in the preset list */}
+                  {agentRecs
+                    .filter((r) => !gameNames.find((gn) => gn.name === r.gameName))
+                    .map((r) => {
+                      const { netGame, rawWin, netWin, pl, tag, applyWinDisc } = calcRow(r, agent);
+                      return (
+                        <div key={r._id} className="grid grid-cols-[1fr_80px_80px_80px_90px_32px] gap-1 px-3 py-2 text-xs items-center border-t border-yellow-900/30">
+                          <span className="text-yellow-600">{r.gameName} *</span>
+                          <span className="text-right font-mono text-gray-300">{fmt(netGame)}</span>
+                          <span className="text-right font-mono text-gray-300">
+                            {fmt(rawWin)}
+                            {applyWinDisc && (
+                              <div className="text-blue-400 text-[10px]">↓{fmt(netWin)}</div>
+                            )}
+                          </span>
+                          <span className="text-right font-mono text-gray-300">{fmt(netWin)}</span>
+                          <span className={`text-right font-mono font-bold text-[10px] ${tag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
+                            {fmt(Math.abs(pl))} {tag}
+                          </span>
+                          <button onClick={() => handleDelete(r._id)}
+                            className="text-gray-700 hover:text-red-400 transition text-base text-center">×</button>
+                        </div>
+                      );
+                    })
+                  }
+                </div>
+
+                {/* Agent totals */}
+                <div className="px-3 py-2.5 bg-gray-800/60 border-t border-gray-700 grid grid-cols-[1fr_80px_80px_80px_90px_32px] gap-1 text-xs font-bold">
+                  <span className="text-gray-400">Total</span>
+                  <span className="text-right font-mono text-white">{fmt(totalNetGame)}</span>
+                  <span className="text-right font-mono text-white">
+                    {fmt(totalRawWin)}
+                    {anyWinDisc && (
+                      <div className="text-blue-400 text-[10px] font-normal">↓{fmt(totalNetWin)}</div>
+                    )}
+                  </span>
+                  <span className="text-right font-mono text-white">{fmt(totalNetWin)}</span>
+                  <span className={`text-right font-mono text-[10px] ${totalTag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
+                    {fmt(Math.abs(totalPL))} {totalTag}
+                  </span>
+                  <span></span>
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
     </div>

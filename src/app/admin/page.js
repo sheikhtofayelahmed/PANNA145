@@ -12,8 +12,9 @@ function calcRow(row, agent) {
     (row.totalWin?.jodi   || 0) * 80;
   const netGame      = rawGame * (1 - gameDisc);
   const applyWinDisc = winDisc > 0 && rawWin < rawGame;
-  const netWin       = applyWinDisc ? rawWin * (1 - winDisc) : rawWin;
-  const pl = netGame - netWin;
+  const initialPL    = netGame - rawWin;
+  const pl           = applyWinDisc ? initialPL * (1 - winDisc) : initialPL;
+  const netWin       = netGame - pl;
   return { netGame, rawWin, netWin, pl, applyWinDisc };
 }
 
