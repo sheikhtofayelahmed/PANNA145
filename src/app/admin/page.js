@@ -128,21 +128,29 @@ export default function AdminHome() {
     load();
   }, []);
 
-  // Group by agent, accumulate pl directly (win discount already baked into each row's pl)
+  // Group by agent — track raw totals, compute P/L at aggregate level
   const groups = {};
   data.forEach((row) => {
     if (!groups[row.agentId])
-      groups[row.agentId] = { agentName: row.agentName || row.agentId, netGame: 0, rawWin: 0, pl: 0, winDiscApplied: false };
-    const c = calcRow(row, agentMap[row.agentId]);
-    groups[row.agentId].netGame += c.netGame;
-    groups[row.agentId].rawWin  += c.rawWin;
-    groups[row.agentId].pl      += c.pl;
-    if (c.applyWinDisc) groups[row.agentId].winDiscApplied = true;
+      groups[row.agentId] = { agentName: row.agentName || row.agentId, rawTotGame: 0, rawTotWin: 0 };
+    groups[row.agentId].rawTotGame += row.totalGame || 0;
+    groups[row.agentId].rawTotWin  +=
+      (row.totalWin?.panna  || 0) * 145 +
+      (row.totalWin?.single || 0) * 9   +
+      (row.totalWin?.jodi   || 0) * 80;
   });
 
+  // Apply win discount at agent aggregate level
   const rows = Object.entries(groups).map(([agentId, g]) => {
-    const tag = g.pl >= 0 ? "BANKER" : "AGENT";
-    return { agentId, agentName: g.agentName, netGame: g.netGame, rawWin: g.rawWin, pl: g.pl, tag, winDiscApplied: g.winDiscApplied };
+    const agent    = agentMap[agentId];
+    const gameDisc = (agent?.gameDiscount || 0) / 100;
+    const winDisc  = (agent?.winDiscount  || 0) / 100;
+    const netGame  = g.rawTotGame * (1 - gameDisc);
+    const applyWinDisc = winDisc > 0 && g.rawTotWin < g.rawTotGame;
+    const initialPL    = netGame - g.rawTotWin;
+    const pl           = applyWinDisc ? initialPL * (1 - winDisc) : initialPL;
+    const tag = pl >= 0 ? "BANKER" : "AGENT";
+    return { agentId, agentName: g.agentName, netGame, rawWin: g.rawTotWin, pl, tag, winDiscApplied: applyWinDisc };
   });
 
   const grandGame = rows.reduce((s, r) => s + r.netGame, 0);

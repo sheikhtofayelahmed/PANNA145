@@ -190,20 +190,24 @@ function AgentTable({ agentId, agentName, rows, agent, gameNames }) {
   const dataMap = {};
   rows.forEach((r) => { dataMap[r.gameName] = r; });
 
-  // Only calc rows that have actual data
+  // Only rows that have actual data
   const dataRows = rows.filter((r) => r.totalGame);
-  const calcs    = dataRows.map((r) => calcRow(r, agent));
 
   const totPanna   = dataRows.reduce((s, r) => s + (r.totalWin?.panna  || 0), 0);
   const totSingle  = dataRows.reduce((s, r) => s + (r.totalWin?.single || 0), 0);
   const totJodi    = dataRows.reduce((s, r) => s + (r.totalWin?.jodi   || 0), 0);
 
   const rawTotGame = dataRows.reduce((s, r) => s + (r.totalGame || 0), 0);
-  const totNetGame = calcs.reduce((s, c) => s + c.netGame, 0);
-  // Sum individual P/Ls (each already has win discount applied)
-  const totPL      = calcs.reduce((s, c) => s + c.pl, 0);
+  // Compute win discount at AGENT AGGREGATE level (not per game row)
+  const gameDisc   = (agent?.gameDiscount || 0) / 100;
+  const winDisc    = (agent?.winDiscount  || 0) / 100;
+  const rawTotWin  = totPanna * 145 + totSingle * 9 + totJodi * 80;
+  const totNetGame = rawTotGame * (1 - gameDisc);
+  const applyWinDisc = winDisc > 0 && rawTotWin < rawTotGame;
+  const initialPL  = totNetGame - rawTotWin;
+  const totPL      = applyWinDisc ? initialPL * (1 - winDisc) : initialPL;
   const totTag     = totPL >= 0 ? "BANKER" : "AGENT";
-  const totNetWin  = totNetGame - totPL; // only used for print reference
+  const totNetWin  = totNetGame - totPL; // for print reference
 
   const latestDate = rows.length > 0 && rows[0].createdAt
     ? new Date(rows[0].createdAt).toLocaleDateString("en-GB")
