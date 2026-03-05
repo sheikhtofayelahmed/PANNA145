@@ -308,7 +308,8 @@ export default function VisitorGameEntry({ moderatorId = "" }) {
                 </div>
 
                 {/* Agent rows for this game */}
-                <div className="divide-y divide-gray-800">
+                <div className="overflow-x-auto">
+                <div className="divide-y divide-gray-800" style={{minWidth:"360px"}}>
                   {/* Column headers */}
                   <div className="grid grid-cols-[1fr_80px_80px_100px_32px] gap-1 px-3 py-1.5 text-xs text-gray-600 uppercase tracking-wider">
                     <span>Agent</span>
@@ -336,9 +337,11 @@ export default function VisitorGameEntry({ moderatorId = "" }) {
                     );
                   })}
                 </div>
+                </div>{/* overflow-x-auto */}
 
                 {/* Game name totals */}
-                <div className="px-3 py-2.5 bg-gray-800/60 border-t border-gray-700 grid grid-cols-[1fr_80px_80px_100px_32px] gap-1 text-xs font-bold">
+                <div className="overflow-x-auto">
+                <div className="px-3 py-2.5 bg-gray-800/60 border-t border-gray-700 grid grid-cols-[1fr_80px_80px_100px_32px] gap-1 text-xs font-bold" style={{minWidth:"360px"}}>
                   <span className="text-gray-400">Total</span>
                   <span className="text-right font-mono text-white">{fmt(totalNetGame)}</span>
                   <span className="text-right font-mono text-white">{fmt(totalRawWin)}</span>
@@ -348,6 +351,7 @@ export default function VisitorGameEntry({ moderatorId = "" }) {
                   </span>
                   <span></span>
                 </div>
+                </div>{/* overflow-x-auto totals */}
               </div>
             );
           })

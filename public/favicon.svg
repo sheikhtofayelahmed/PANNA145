@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" rx="18" fill="#111111"/>
+  <text x="50" y="56" text-anchor="middle" dominant-baseline="middle"
+        fill="#EAB308" font-family="Arial Black, Arial, sans-serif"
+        font-size="36" font-weight="900" letter-spacing="-1">P145</text>
+</svg>

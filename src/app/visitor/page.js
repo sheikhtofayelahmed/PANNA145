@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 function calcRow(row, agent) {
   const gameDisc  = (agent?.gameDiscount || 0) / 100;
@@ -148,6 +148,33 @@ export default function VisitorPage() {
     groups[row.agentId].rows.push(row);
   });
 
+  // ── Admin-style summary (aggregate per agent) ──
+  const summaryGroups = {};
+  data.forEach((row) => {
+    if (!summaryGroups[row.agentId])
+      summaryGroups[row.agentId] = { agentName: row.agentName || row.agentId, rawTotGame: 0, rawTotWin: 0 };
+    summaryGroups[row.agentId].rawTotGame += row.totalGame || 0;
+    summaryGroups[row.agentId].rawTotWin  +=
+      (row.totalWin?.panna  || 0) * 145 +
+      (row.totalWin?.single || 0) * 9   +
+      (row.totalWin?.jodi   || 0) * 80;
+  });
+  const summaryRows = Object.entries(summaryGroups).map(([agentId, g]) => {
+    const agent    = agentMap[agentId];
+    const gameDisc = (agent?.gameDiscount || 0) / 100;
+    const winDisc  = (agent?.winDiscount  || 0) / 100;
+    const netGame  = g.rawTotGame * (1 - gameDisc);
+    const applyWinDisc = winDisc > 0 && g.rawTotWin < g.rawTotGame;
+    const initialPL    = netGame - g.rawTotWin;
+    const pl           = applyWinDisc ? initialPL * (1 - winDisc) : initialPL;
+    const tag = pl >= 0 ? "BANKER" : "AGENT";
+    return { agentId, agentName: g.agentName, netGame, rawWin: g.rawTotWin, pl, tag, winDiscApplied: applyWinDisc };
+  });
+  const grandGame = summaryRows.reduce((s, r) => s + r.netGame, 0);
+  const grandWin  = summaryRows.reduce((s, r) => s + r.rawWin,  0);
+  const grandPL   = summaryRows.reduce((s, r) => s + r.pl,      0);
+  const grandTag  = grandPL >= 0 ? "BANKER" : "AGENT";
+
   const q = search.trim().toLowerCase();
   const filteredEntries = Object.entries(groups).filter(([agentId, { agentName }]) =>
     !q ||
@@ -155,11 +182,68 @@ export default function VisitorPage() {
     agentId.toLowerCase().includes(q)
   );
 
+  const sth = "border border-gray-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-gray-500 bg-gray-50";
+  const std = "border border-gray-300 px-3 py-1.5 text-sm";
+
   return (
     <div className="min-h-screen bg-white text-black p-4">
       <h1 className="text-base font-bold text-center mb-4 tracking-widest uppercase">
         Game Results
       </h1>
+
+      {/* ── Admin summary table ── */}
+      {!loading && summaryRows.length > 0 && (
+        <div className="max-w-2xl mx-auto mb-6">
+          <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-black" style={{minWidth:"420px"}}>
+            <thead>
+              <tr>
+                <th className={`${sth} text-left`}>Agent</th>
+                <th className={`${sth} text-right`}>Total Game</th>
+                <th className={`${sth} text-right`}>Total Win</th>
+                <th className={`${sth} text-right`}>P / L</th>
+                <th className={`${sth} text-center`}>Tag</th>
+              </tr>
+            </thead>
+            <tbody>
+              {summaryRows.map((r) => (
+                <tr key={r.agentId} className="hover:bg-gray-50">
+                  <td className={`${std} font-medium`}>{r.agentName}</td>
+                  <td className={`${std} text-right font-mono`}>{fmt(r.netGame)}</td>
+                  <td className={`${std} text-right font-mono`}>{fmt(r.rawWin)}</td>
+                  <td className={`${std} text-right`}>
+                    <div className={`font-mono font-bold ${r.tag === "BANKER" ? "text-green-700" : "text-red-600"}`}>
+                      {fmt(Math.abs(r.pl))}
+                    </div>
+                    {r.winDiscApplied && <div className="text-xs text-blue-500">W.disc</div>}
+                  </td>
+                  <td className={`${std} text-center`}>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded ${r.tag === "BANKER" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+                      {r.tag}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-gray-400 bg-gray-50 font-bold">
+                <td className={`${std} text-xs uppercase tracking-wider text-gray-500`}>Total</td>
+                <td className={`${std} text-right font-mono`}>{fmt(grandGame)}</td>
+                <td className={`${std} text-right font-mono`}>{fmt(grandWin)}</td>
+                <td className={`${std} text-right font-mono font-bold ${grandTag === "BANKER" ? "text-green-700" : "text-red-600"}`}>
+                  {fmt(Math.abs(grandPL))}
+                </td>
+                <td className={`${std} text-center`}>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded ${grandTag === "BANKER" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+                    {grandTag}
+                  </span>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+          </div>
+        </div>
+      )}
 
       {/* Search bar */}
       <div className="max-w-2xl mx-auto mb-6">
@@ -245,32 +329,35 @@ function AgentTable({ agentId, agentName, rows, agent, gameNames }) {
   const td = "border border-gray-400 px-2 py-1.5 text-sm";
   const th = "border border-gray-400 px-2 py-1.5 text-sm font-semibold bg-gray-100";
 
+  const captureRef = useRef(null);
+
   function handlePrint() {
     printAgentTable({ agentName, latestDate, gameNames, dataMap, totPanna, totSingle, totJodi, rawTotWin, rawTotGame, totNetGame, totPL, applyWinDisc });
   }
 
-  function handleWhatsApp() {
-    const lines = [
-      `📋 *${agentName}*${latestDate ? ` — ${latestDate}` : ""}`,
-      "",
-      ...gameNames.map((gn) => {
-        const row = dataMap[gn];
-        if (!row) return `${gn}: —`;
-        const p = row.totalWin?.panna  || 0;
-        const s = row.totalWin?.single || 0;
-        const j = row.totalWin?.jodi   || 0;
-        const wins = [p && `P:${p}`, s && `S:${s}`, j && `J:${j}`].filter(Boolean).join(" ") || "—";
-        return `*${gn}*  Game:${row.totalGame}  ${wins}`;
-      }),
-      "",
-      `Pana: ${totPanna || "—"}  Single: ${totSingle || "—"}  Jodi: ${totJodi || "—"}`,
-      `Total Win: ${fmt(rawTotWin)}`,
-      `─────────────`,
-      `*${fmt(Math.abs(totPL))} ${totTag}*` + (applyWinDisc ? " _(W.disc)_" : ""),
-      `Game: ${fmt(rawTotGame)}  After Disc: ${fmt(totNetGame)}`,
-    ];
-    const text = lines.join("\n");
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  async function handleWhatsApp() {
+    if (!captureRef.current) return;
+    try {
+      const h2c = (await import("html2canvas")).default;
+      const canvas = await h2c(captureRef.current, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        useCORS: true,
+      });
+      canvas.toBlob(async (blob) => {
+        const file = new File([blob], `${agentName}.png`, { type: "image/png" });
+        try {
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: agentName });
+          } else {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url; a.download = `${agentName}.png`; a.click();
+            URL.revokeObjectURL(url);
+          }
+        } catch { /* user cancelled */ }
+      }, "image/png");
+    } catch (err) { console.error(err); }
   }
 
   return (
@@ -288,7 +375,9 @@ function AgentTable({ agentId, agentName, rows, agent, gameNames }) {
         </button>
       </div>
 
-      <table className="w-full border-collapse">
+      <div ref={captureRef} className="bg-white p-1">
+      <div className="overflow-x-auto">
+      <table className="w-full border-collapse" style={{minWidth:"340px"}}>
         <thead>
           <tr>
             <th className={`${th} text-left w-20`}>Market</th>
@@ -352,6 +441,7 @@ function AgentTable({ agentId, agentName, rows, agent, gameNames }) {
         </tbody>
       </table>
 
+      </div>{/* overflow-x-auto */}
       <div className="mt-1 flex text-xs text-gray-600">
         <div className="w-20"></div>
         <div className="w-24 text-right pr-2 space-y-0.5">
@@ -363,6 +453,7 @@ function AgentTable({ agentId, agentName, rows, agent, gameNames }) {
           <div>After Discount</div>
         </div>
       </div>
+      </div>{/* captureRef */}
     </div>
   );
 }

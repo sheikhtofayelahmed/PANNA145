@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 function calcRow(row, agent) {
   const gameDisc = (agent?.gameDiscount || 0) / 100;
@@ -91,14 +91,20 @@ function printSummary(rows, grandGame, grandWin, grandPL, grandTag) {
 }
 
 export default function AdminHome() {
-  const [data, setData]         = useState([]);
-  const [agentMap, setAgentMap] = useState({});
-  const [loading, setLoading]   = useState(true);
-  const [clearing, setClearing] = useState(false);
+  const [data, setData]               = useState([]);
+  const [agentMap, setAgentMap]       = useState({});
+  const [loading, setLoading]         = useState(true);
+  const [clearing, setClearing]       = useState(false);
+  const [showClearModal, setShowClearModal] = useState(false);
+  const [clearText, setClearText]     = useState("");
+  const tableRef = useRef(null);
 
-  async function handleClearAll() {
-    if (!confirm("Delete ALL game data for today? This cannot be undone.")) return;
+  const CLEAR_KEYWORD = "CLEAR ALL";
+
+  async function handleClearConfirm() {
     setClearing(true);
+    setShowClearModal(false);
+    setClearText("");
     await fetch("/api/visitor-game-data", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -158,25 +164,30 @@ export default function AdminHome() {
   const grandPL   = rows.reduce((s, r) => s + r.pl,      0);
   const grandTag  = grandPL >= 0 ? "BANKER" : "AGENT";
 
-  function shareWhatsApp() {
-    const date = new Date().toLocaleDateString("en-GB");
-    const lines = [
-      `📊 *Game Summary — ${date}*`,
-      "",
-      ...rows.map((r) =>
-        `*${r.agentName}*\n` +
-        `Game: ${fmt(r.netGame)}  Win: ${fmt(r.rawWin)}\n` +
-        `P/L: ${fmt(Math.abs(r.pl))} ${r.tag}` +
-        (r.winDiscApplied ? " _(W.disc)_" : "")
-      ),
-      "",
-      `─────────────`,
-      `*TOTAL*`,
-      `Game: ${fmt(grandGame)}  Win: ${fmt(grandWin)}`,
-      `P/L: ${fmt(Math.abs(grandPL))} ${grandTag}`,
-    ];
-    const text = lines.join("\n");
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  async function shareWhatsApp() {
+    if (!tableRef.current) return;
+    try {
+      const h2c = (await import("html2canvas")).default;
+      const canvas = await h2c(tableRef.current, {
+        scale: 2,
+        backgroundColor: "#030712",
+        useCORS: true,
+      });
+      canvas.toBlob(async (blob) => {
+        const date = new Date().toLocaleDateString("en-GB").replace(/\//g, "-");
+        const file = new File([blob], `summary-${date}.png`, { type: "image/png" });
+        try {
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: `Game Summary ${date}` });
+          } else {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url; a.download = `summary-${date}.png`; a.click();
+            URL.revokeObjectURL(url);
+          }
+        } catch { /* user cancelled */ }
+      }, "image/png");
+    } catch (err) { console.error(err); }
   }
 
   const th = "border border-gray-600 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-400";
@@ -202,7 +213,7 @@ export default function AdminHome() {
             </>
           )}
           <button
-            onClick={handleClearAll}
+            onClick={() => { setClearText(""); setShowClearModal(true); }}
             disabled={clearing || rows.length === 0}
             className="px-4 py-1.5 text-xs bg-red-900 hover:bg-red-800 disabled:opacity-40 text-red-200 font-bold rounded-lg transition">
             {clearing ? "Clearing..." : "Clear All Data"}
@@ -219,7 +230,9 @@ export default function AdminHome() {
           No data yet
         </p>
       ) : (
-        <table className="w-full border-collapse">
+        <div ref={tableRef} className="bg-gray-950 rounded-lg p-2">
+        <div className="overflow-x-auto">
+        <table className="w-full border-collapse" style={{minWidth:"420px"}}>
           <thead>
             <tr className="bg-gray-900">
               <th className={`${th} text-left`}>Agent</th>
@@ -267,6 +280,44 @@ export default function AdminHome() {
             </tr>
           </tfoot>
         </table>
+        </div>
+        </div>
+      )}
+
+      {/* Clear All confirmation modal */}
+      {showClearModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+          <div className="bg-gray-900 border border-red-800 rounded-2xl p-6 w-full max-w-sm mx-4 space-y-4">
+            <h2 className="text-base font-bold text-red-400 uppercase tracking-wider">Clear All Data</h2>
+            <p className="text-sm text-gray-400">
+              This will permanently delete <span className="text-white font-bold">all game entries</span>. This cannot be undone.
+            </p>
+            <p className="text-xs text-gray-500">
+              Type <span className="text-red-300 font-mono font-bold">{CLEAR_KEYWORD}</span> to confirm:
+            </p>
+            <input
+              type="text"
+              value={clearText}
+              onChange={(e) => setClearText(e.target.value)}
+              placeholder={CLEAR_KEYWORD}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm font-mono focus:outline-none focus:border-red-600"
+              autoFocus
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowClearModal(false); setClearText(""); }}
+                className="flex-1 py-2 rounded-lg text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 transition">
+                Cancel
+              </button>
+              <button
+                onClick={handleClearConfirm}
+                disabled={clearText !== CLEAR_KEYWORD}
+                className="flex-1 py-2 rounded-lg text-sm bg-red-700 hover:bg-red-600 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold transition">
+                Delete All
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

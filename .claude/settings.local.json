@@ -10,7 +10,9 @@
       "Bash(node --version)",
       "Bash(xargs grep -l \"admin-login\\\\|admin-logout\\\\|mfa-verify\")",
       "Bash(node extractapis.js)",
-      "Bash(node -e \"require\\(''canvas''\\)\")"
+      "Bash(node -e \"require\\(''canvas''\\)\")",
+      "Bash(npm install html2canvas --save)",
+      "Bash(npm install html2canvas)"
     ]
   }
 }
