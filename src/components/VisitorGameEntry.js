@@ -37,6 +37,7 @@ export default function VisitorGameEntry({ moderatorId = "" }) {
 
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState({ type: "", text: "" });
+  const [deleteTarget, setDeleteTarget] = useState(null); // { id, agentName, gameName }
 
   function flash(type, text) {
     setMsg({ type, text });
@@ -115,8 +116,9 @@ export default function VisitorGameEntry({ moderatorId = "" }) {
     }
   }
 
-  async function handleDelete(id) {
-    if (!confirm("Delete this entry?")) return;
+  async function handleDeleteConfirm() {
+    const id = deleteTarget?.id;
+    setDeleteTarget(null);
     await fetch("/api/visitor-game-data", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -331,7 +333,7 @@ export default function VisitorGameEntry({ moderatorId = "" }) {
                           {fmt(Math.abs(pl))} {tag}
                           {applyWinDisc && <div className="text-blue-400 font-normal">W.disc</div>}
                         </span>
-                        <button onClick={() => handleDelete(r._id)}
+                        <button onClick={() => setDeleteTarget({ id: r._id, agentName: r.agentName || r.agentId, gameName: r.gameName })}
                           className="text-gray-700 hover:text-red-400 transition text-base text-center">×</button>
                       </div>
                     );
@@ -357,6 +359,38 @@ export default function VisitorGameEntry({ moderatorId = "" }) {
           })
         )}
       </div>
+
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+          <div className="bg-gray-900 border border-red-800 rounded-2xl p-6 w-full max-w-sm mx-4 space-y-4">
+            <h2 className="text-base font-bold text-red-400 uppercase tracking-wider">
+              Delete Entry
+            </h2>
+            <p className="text-sm text-gray-400">
+              Are you sure you want to delete this entry? This cannot be undone.
+            </p>
+            <div className="bg-gray-800 rounded-xl p-4 space-y-1">
+              <div className="text-xs text-gray-500 uppercase tracking-wider">Agent</div>
+              <div className="text-white font-semibold">{deleteTarget.agentName}</div>
+              <div className="text-xs text-gray-500 uppercase tracking-wider mt-2">Game</div>
+              <div className="text-yellow-400 font-semibold">{deleteTarget.gameName}</div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="flex-1 py-2 rounded-lg text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 transition">
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="flex-1 py-2 rounded-lg text-sm bg-red-700 hover:bg-red-600 text-white font-bold transition">
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
