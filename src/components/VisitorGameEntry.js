@@ -38,6 +38,7 @@ export default function VisitorGameEntry({ moderatorId = "" }) {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState({ type: "", text: "" });
   const [deleteTarget, setDeleteTarget] = useState(null); // { id, agentName, gameName }
+  const [dupTarget, setDupTarget] = useState(null);       // { agentName, gameName } — duplicate warning
 
   function flash(type, text) {
     setMsg({ type, text });
@@ -79,12 +80,7 @@ export default function VisitorGameEntry({ moderatorId = "" }) {
   };
   const preview = totalGame ? calcRow(previewRow, selectedAgent) : null;
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!agentId || !gameName || !totalGame) {
-      flash("error", "Fill all required fields");
-      return;
-    }
+  async function doSave() {
     setSaving(true);
     try {
       const res = await fetch("/api/visitor-game-data", {
@@ -114,6 +110,28 @@ export default function VisitorGameEntry({ moderatorId = "" }) {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!agentId || !gameName || !totalGame) {
+      flash("error", "Fill all required fields");
+      return;
+    }
+    // Duplicate check — same agent + same game already in overall records (any moderator)
+    const isDuplicate = records.some(
+      (r) => r.agentId === agentId && r.gameName === gameName
+    );
+    if (isDuplicate) {
+      setDupTarget({ agentName: selectedAgent?.name || agentId, gameName });
+      return;
+    }
+    await doSave();
+  }
+
+  async function handleDupConfirm() {
+    setDupTarget(null);
+    await doSave();
   }
 
   async function handleDeleteConfirm() {
@@ -359,6 +377,42 @@ export default function VisitorGameEntry({ moderatorId = "" }) {
           })
         )}
       </div>
+
+      {/* Duplicate entry warning modal */}
+      {dupTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+          <div className="bg-gray-900 border border-yellow-700 rounded-2xl p-6 w-full max-w-sm mx-4 space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">⚠️</span>
+              <h2 className="text-base font-bold text-yellow-400 uppercase tracking-wider">
+                Duplicate Entry
+              </h2>
+            </div>
+            <p className="text-sm text-gray-400">
+              This agent already has an entry for this game.
+            </p>
+            <div className="bg-gray-800 rounded-xl p-4 space-y-1">
+              <div className="text-xs text-gray-500 uppercase tracking-wider">Agent</div>
+              <div className="text-white font-semibold">{dupTarget.agentName}</div>
+              <div className="text-xs text-gray-500 uppercase tracking-wider mt-2">Game</div>
+              <div className="text-yellow-400 font-semibold">{dupTarget.gameName}</div>
+            </div>
+            <p className="text-xs text-gray-500">Do you want to save it anyway?</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDupTarget(null)}
+                className="flex-1 py-2 rounded-lg text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 transition">
+                Cancel
+              </button>
+              <button
+                onClick={handleDupConfirm}
+                className="flex-1 py-2 rounded-lg text-sm bg-yellow-700 hover:bg-yellow-600 text-white font-bold transition">
+                Save Anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete confirmation modal */}
       {deleteTarget && (
