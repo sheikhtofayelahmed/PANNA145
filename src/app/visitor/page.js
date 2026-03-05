@@ -27,26 +27,26 @@ function printAgentTable({ agentName, latestDate, gameNames, dataMap, totPanna, 
   const plColor = totTag === "BANKER" ? "#166534" : "#991b1b";
 
   const lastCell = `
-    <div style="font-weight:bold;font-size:14px;">${agentName}</div>
+    <div style="font-weight:bold;font-size:16px;">${agentName}</div>
     ${latestDate ? `<div style="font-size:11px;color:#666;margin-bottom:8px;">${latestDate}</div>` : ""}
-    <div style="font-size:11px;color:#666;">Pana</div>
-    <div style="font-family:monospace;font-weight:600;margin-bottom:4px;">${totPanna || "—"}</div>
-    <div style="font-size:11px;color:#666;">Single</div>
-    <div style="font-family:monospace;font-weight:600;margin-bottom:4px;">${totSingle || "—"}</div>
-    <div style="font-size:11px;color:#666;">Jodi</div>
-    <div style="font-family:monospace;font-weight:600;margin-bottom:6px;">${totJodi || "—"}</div>
-    <div style="border-top:1px solid #ccc;padding-top:5px;">
-      <div style="font-size:11px;color:#666;">Total Win</div>
-      <div style="font-family:monospace;font-weight:600;margin-bottom:6px;">${fmt(rawTotWin)}</div>
+    <div style="font-size:11px;color:#888;">Pana</div>
+    <div style="font-family:monospace;font-weight:700;font-size:15px;margin-bottom:4px;">${totPanna || "—"}</div>
+    <div style="font-size:11px;color:#888;">Single</div>
+    <div style="font-family:monospace;font-weight:700;font-size:15px;margin-bottom:4px;">${totSingle || "—"}</div>
+    <div style="font-size:11px;color:#888;">Jodi</div>
+    <div style="font-family:monospace;font-weight:700;font-size:15px;margin-bottom:6px;">${totJodi || "—"}</div>
+    <div style="border-top:1px solid #ccc;padding-top:6px;">
+      <div style="font-size:11px;color:#888;">Total Win</div>
+      <div style="font-family:monospace;font-weight:700;font-size:15px;margin-bottom:6px;">${fmt(rawTotWin)}</div>
     </div>
-    <div style="border-top:1px solid #ccc;padding-top:5px;">
-      <div style="font-family:monospace;font-size:11px;color:#555;text-align:right;padding-right:2px;">${fmt(totNetGame)}</div>
-      <div style="font-family:monospace;font-size:11px;color:#555;display:flex;justify-content:space-between;padding-right:2px;">
+    <div style="border-top:1px solid #ccc;padding-top:6px;">
+      <div style="font-family:monospace;font-size:13px;color:#555;text-align:right;padding-right:2px;">${fmt(totNetGame)}</div>
+      <div style="font-family:monospace;font-size:13px;color:#555;display:flex;justify-content:space-between;padding-right:2px;">
         <span>&#8722;</span><span>${fmt(rawTotWin)}</span>
       </div>
-      <div style="border-top:2px solid #333;margin-top:3px;padding-top:4px;text-align:center;">
-        <div style="font-weight:bold;font-size:14px;color:${plColor};">${fmt(Math.abs(totPL))}</div>
-        <div style="font-size:11px;font-weight:bold;color:${plColor};">${totTag}</div>
+      <div style="border-top:2px solid #333;margin-top:4px;padding-top:5px;text-align:center;">
+        <div style="font-weight:900;font-size:20px;color:${plColor};">${fmt(Math.abs(totPL))}</div>
+        <div style="font-size:13px;font-weight:bold;letter-spacing:0.05em;color:${plColor};">${totTag}</div>
         ${applyWinDisc ? `<div style="font-size:10px;color:#1d4ed8;">W.disc</div>` : ""}
       </div>
     </div>`;
@@ -384,7 +384,7 @@ function AgentTable({ agentId, agentName, rows, agent, gameNames }) {
             <th className={`${th} text-right w-24`}>Game</th>
             <th className={`${th} text-center w-16`}>Pana</th>
             <th className={`${th} text-center w-16`}>Single</th>
-            <th className={`${th} text-center w-28`}></th>
+            <th className={`${th} text-center w-40`}></th>
           </tr>
         </thead>
         <tbody>
@@ -398,35 +398,35 @@ function AgentTable({ agentId, agentName, rows, agent, gameNames }) {
                 <td className={`${td} text-center`}>{row ? (row.totalWin?.single || "—") : "—"}</td>
                 {i === 0 && (
                   <td className={`${td} text-center align-middle`} rowSpan={N}>
-                    <div className="font-bold text-sm leading-tight text-black">{agentName}</div>
+                    <div className="font-bold text-base leading-tight text-black">{agentName}</div>
                     {latestDate && <div className="text-xs text-gray-500 mt-1">{latestDate}</div>}
-                    <div className="mt-3 space-y-1.5 text-center">
+                    <div className="mt-3 space-y-2 text-center">
                       <div>
-                        <div className="text-xs text-gray-500">Pana</div>
-                        <div className="font-mono font-semibold text-sm">{totPanna || "—"}</div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-gray-500">Single</div>
-                        <div className="font-mono font-semibold text-sm">{totSingle || "—"}</div>
+                        <div className="text-xs text-gray-400">Pana</div>
+                        <div className="font-mono font-bold text-base">{totPanna || "—"}</div>
                       </div>
                       <div>
-                        <div className="text-xs text-gray-500">Jodi</div>
-                        <div className="font-mono font-semibold text-sm">{totJodi || "—"}</div>
+                        <div className="text-xs text-gray-400">Single</div>
+                        <div className="font-mono font-bold text-base">{totSingle || "—"}</div>
                       </div>
-                      <div className="border-t border-gray-300 pt-1.5">
-                        <div className="text-xs text-gray-500">Total Win</div>
-                        <div className="font-mono font-semibold text-sm">{fmt(rawTotWin)}</div>
+                      <div>
+                        <div className="text-xs text-gray-400">Jodi</div>
+                        <div className="font-mono font-bold text-base">{totJodi || "—"}</div>
                       </div>
-                      <div className="border-t border-gray-300 pt-1.5">
-                        <div className="font-mono text-xs text-gray-500 text-right pr-0.5">{fmt(totNetGame)}</div>
-                        <div className="font-mono text-xs text-gray-500 flex justify-between pr-0.5">
+                      <div className="border-t border-gray-300 pt-2">
+                        <div className="text-xs text-gray-400">Total Win</div>
+                        <div className="font-mono font-bold text-base">{fmt(rawTotWin)}</div>
+                      </div>
+                      <div className="border-t border-gray-300 pt-2">
+                        <div className="font-mono text-sm text-gray-500 text-right pr-0.5">{fmt(totNetGame)}</div>
+                        <div className="font-mono text-sm text-gray-500 flex justify-between pr-0.5">
                           <span>−</span><span>{fmt(rawTotWin)}</span>
                         </div>
-                        <div className="border-t-2 border-gray-700 mt-1 pt-1 text-center">
-                          <div className={`font-bold text-sm ${totTag === "BANKER" ? "text-green-700" : "text-red-600"}`}>
+                        <div className="border-t-2 border-gray-700 mt-1 pt-1.5 text-center">
+                          <div className={`font-black text-xl ${totTag === "BANKER" ? "text-green-700" : "text-red-600"}`}>
                             {fmt(Math.abs(totPL))}
                           </div>
-                          <div className={`text-xs font-bold tracking-wider ${totTag === "BANKER" ? "text-green-600" : "text-red-500"}`}>
+                          <div className={`text-sm font-bold tracking-widest ${totTag === "BANKER" ? "text-green-600" : "text-red-500"}`}>
                             {totTag}
                           </div>
                           {applyWinDisc && <div className="text-xs text-blue-500 font-normal">W.disc</div>}
