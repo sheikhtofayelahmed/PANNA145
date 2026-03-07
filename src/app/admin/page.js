@@ -102,6 +102,8 @@ export default function AdminHome() {
   const [showClearModal, setShowClearModal] = useState(false);
   const [clearText, setClearText] = useState("");
   const [previousPL, setPreviousPL] = useState(null); // accumulated P/L from past clears
+  const [summaryHistory, setSummaryHistory] = useState([]);
+  const [expandedHistory, setExpandedHistory] = useState(null); // index of expanded past summary
   const tableRef = useRef(null);
 
   const CLEAR_KEYWORD = "CLEAR ALL";
@@ -110,18 +112,44 @@ export default function AdminHome() {
     setClearing(true);
     setShowClearModal(false);
     setClearText("");
-    // Save current P/L to history before clearing
-    await fetch("/api/pl-history", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pl: grandPL }),
-    });
+    const saDate = new Date().toLocaleDateString("en-GB", { timeZone: "Asia/Riyadh" });
+    // Save summary snapshot + P/L history before clearing
+    await Promise.all([
+      fetch("/api/pl-history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pl: grandPL }),
+      }),
+      fetch("/api/summary-history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: saDate,
+          rows: rows.map((r) => ({
+            agentName: r.agentName,
+            netGame: r.netGame,
+            rawWin: r.rawWin,
+            pl: r.pl,
+            tag: r.tag,
+            winDiscApplied: r.winDiscApplied,
+          })),
+          grandGame,
+          grandWin,
+          grandPL,
+          grandTag,
+        }),
+      }),
+    ]);
     await fetch("/api/visitor-game-data", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clearAll: true }),
     });
     setPreviousPL((prev) => (prev ?? 0) + grandPL);
+    setSummaryHistory((prev) => [
+      { date: saDate, rows: rows.map((r) => ({ ...r })), grandGame, grandWin, grandPL, grandTag, clearedAt: new Date().toISOString() },
+      ...prev,
+    ]);
     setData([]);
     setClearing(false);
   }
@@ -129,16 +157,19 @@ export default function AdminHome() {
   useEffect(() => {
     async function load() {
       try {
-        const [gameRes, agentRes, histRes] = await Promise.all([
+        const [gameRes, agentRes, histRes, summaryRes] = await Promise.all([
           fetch("/api/visitor-game-data"),
           fetch("/api/get-all-agents"),
           fetch("/api/pl-history"),
+          fetch("/api/summary-history"),
         ]);
         const gameJson = await gameRes.json();
         const agentJson = await agentRes.json();
         const histJson = await histRes.json();
+        const summaryJson = await summaryRes.json();
         setData(gameJson.data || []);
         setPreviousPL(histJson.totalPL ?? 0);
+        setSummaryHistory(summaryJson.records || []);
         const map = {};
         (agentJson.agents || []).forEach((a) => {
           map[a.agentId] = a;
@@ -376,6 +407,92 @@ export default function AdminHome() {
               </div>
             );
           })()}
+        </div>
+      )}
+
+      {/* Past Summaries */}
+      {summaryHistory.length > 0 && (
+        <div className="mt-6">
+          <h2 className="text-xs text-gray-500 uppercase tracking-wider mb-3">Past Summaries</h2>
+          <div className="space-y-2">
+            {summaryHistory.map((snap, i) => {
+              const isOpen = expandedHistory === i;
+              const snapTag = snap.grandPL >= 0 ? "BANKER" : "AGENT";
+              return (
+                <div key={i} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+                  {/* Header row — click to expand */}
+                  <button
+                    onClick={() => setExpandedHistory(isOpen ? null : i)}
+                    className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-800 transition">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-mono text-yellow-400 font-bold">{snap.date}</span>
+                      <span className="text-xs text-gray-500">{snap.rows?.length || 0} agents</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`font-mono font-bold text-sm ${snap.grandPL >= 0 ? "text-green-400" : "text-red-400"}`}>
+                        {fmt(Math.abs(snap.grandPL))} {snapTag}
+                      </span>
+                      <span className="text-gray-600 text-xs">{isOpen ? "▲" : "▼"}</span>
+                    </div>
+                  </button>
+
+                  {/* Expanded table */}
+                  {isOpen && (
+                    <div className="border-t border-gray-800">
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse" style={{ minWidth: "380px" }}>
+                          <thead>
+                            <tr className="bg-gray-800">
+                              <th className={`${th} text-left`}>Agent</th>
+                              <th className={`${th} text-right`}>Total Game</th>
+                              <th className={`${th} text-right`}>Total Win</th>
+                              <th className={`${th} text-right`}>P / L</th>
+                              <th className={`${th} text-center`}>Tag</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(snap.rows || []).map((r, j) => (
+                              <tr key={j} className="hover:bg-gray-900/40">
+                                <td className={`${td} font-medium`}>{r.agentName}</td>
+                                <td className={`${td} text-right font-mono`}>{fmt(r.netGame)}</td>
+                                <td className={`${td} text-right font-mono`}>{fmt(r.rawWin)}</td>
+                                <td className={`${td} text-right`}>
+                                  <div className={`font-mono font-bold ${r.tag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
+                                    {fmt(Math.abs(r.pl))}
+                                  </div>
+                                  {r.winDiscApplied && <div className="text-xs text-blue-400">W.disc</div>}
+                                </td>
+                                <td className={`${td} text-center`}>
+                                  <span className={`text-xs font-bold px-2 py-0.5 rounded ${r.tag === "BANKER" ? "bg-green-900/50 text-green-400" : "bg-red-900/50 text-red-400"}`}>
+                                    {r.tag}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr className="bg-gray-800 border-t-2 border-gray-600 font-bold">
+                              <td className={`${td} text-xs uppercase tracking-wider text-gray-400`}>Total</td>
+                              <td className={`${td} text-right font-mono`}>{fmt(snap.grandGame)}</td>
+                              <td className={`${td} text-right font-mono`}>{fmt(snap.grandWin)}</td>
+                              <td className={`${td} text-right font-mono font-bold ${snapTag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
+                                {fmt(Math.abs(snap.grandPL))}
+                              </td>
+                              <td className={`${td} text-center`}>
+                                <span className={`text-xs font-bold px-2 py-0.5 rounded ${snapTag === "BANKER" ? "bg-green-900/50 text-green-400" : "bg-red-900/50 text-red-400"}`}>
+                                  {snapTag}
+                                </span>
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
