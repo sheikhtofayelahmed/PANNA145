@@ -132,18 +132,22 @@ export default function VisitorPage() {
   const [gameNames, setGameNames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [previousPL, setPreviousPL] = useState(0);
 
   async function load() {
     try {
-      const [gameRes, agentRes, nameRes] = await Promise.all([
+      const [gameRes, agentRes, nameRes, histRes] = await Promise.all([
         fetch("/api/visitor-game-data"),
         fetch("/api/get-all-agents"),
         fetch("/api/game-names"),
+        fetch("/api/pl-history"),
       ]);
       const gameJson = await gameRes.json();
       const agentJson = await agentRes.json();
       const nameJson = await nameRes.json();
+      const histJson = await histRes.json();
       setData(gameJson.data || []);
+      setPreviousPL(histJson.totalPL ?? 0);
       const map = {};
       (agentJson.agents || []).forEach((a) => {
         map[a.agentId] = a;
@@ -301,6 +305,41 @@ export default function VisitorPage() {
         </div>
       )}
 
+      {/* Accumulated P/L from previous cleared sessions */}
+      {!loading && (previousPL !== 0 || summaryRows.length > 0) && (
+        <div className="max-w-2xl mx-auto mb-6 bg-white border border-gray-200 rounded-xl p-4 space-y-2 text-black">
+          <div className="text-xs text-gray-500 uppercase tracking-wider mb-2">Accumulated P/L</div>
+          {previousPL !== 0 && (
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-gray-500">Previous Sessions</span>
+              <span className={`font-mono font-bold ${previousPL >= 0 ? "text-green-700" : "text-red-600"}`}>
+                {fmt(Math.abs(previousPL))} {previousPL >= 0 ? "BANKER" : "AGENT"}
+              </span>
+            </div>
+          )}
+          {summaryRows.length > 0 && (
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-gray-500">Current Session</span>
+              <span className={`font-mono font-bold ${grandPL >= 0 ? "text-green-700" : "text-red-600"}`}>
+                {fmt(Math.abs(grandPL))} {grandTag}
+              </span>
+            </div>
+          )}
+          {previousPL !== 0 && summaryRows.length > 0 && (() => {
+            const combined = previousPL + grandPL;
+            const combinedTag = combined >= 0 ? "BANKER" : "AGENT";
+            return (
+              <div className="flex justify-between items-center pt-2 border-t border-gray-200 text-sm font-bold">
+                <span className="text-black">Grand Total</span>
+                <span className={`font-mono text-lg ${combined >= 0 ? "text-green-700" : "text-red-600"}`}>
+                  {fmt(Math.abs(combined))} {combinedTag}
+                </span>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
       {/* Search bar */}
       <div className="max-w-2xl mx-auto mb-6">
         <div className="relative">
@@ -386,7 +425,7 @@ function AgentTable({ agentId, agentName, rows, agent, gameNames }) {
 
   const latestDate =
     rows.length > 0 && rows[0].createdAt
-      ? new Date(rows[0].createdAt).toLocaleDateString("en-GB")
+      ? new Date(rows[0].createdAt).toLocaleDateString("en-GB", { timeZone: "Asia/Riyadh" })
       : "";
 
   const N = gameNames.length;

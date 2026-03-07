@@ -23,7 +23,7 @@ function fmt(n) {
 }
 
 function printSummary(rows, grandGame, grandWin, grandPL, grandTag) {
-  const date = new Date().toLocaleDateString("en-GB");
+  const date = new Date().toLocaleDateString("en-GB", { timeZone: "Asia/Riyadh" });
 
   const dataRows = rows
     .map((r) => {
@@ -101,6 +101,7 @@ export default function AdminHome() {
   const [clearing, setClearing] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
   const [clearText, setClearText] = useState("");
+  const [previousPL, setPreviousPL] = useState(null); // accumulated P/L from past clears
   const tableRef = useRef(null);
 
   const CLEAR_KEYWORD = "CLEAR ALL";
@@ -109,11 +110,18 @@ export default function AdminHome() {
     setClearing(true);
     setShowClearModal(false);
     setClearText("");
+    // Save current P/L to history before clearing
+    await fetch("/api/pl-history", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pl: grandPL }),
+    });
     await fetch("/api/visitor-game-data", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clearAll: true }),
     });
+    setPreviousPL((prev) => (prev ?? 0) + grandPL);
     setData([]);
     setClearing(false);
   }
@@ -121,13 +129,16 @@ export default function AdminHome() {
   useEffect(() => {
     async function load() {
       try {
-        const [gameRes, agentRes] = await Promise.all([
+        const [gameRes, agentRes, histRes] = await Promise.all([
           fetch("/api/visitor-game-data"),
           fetch("/api/get-all-agents"),
+          fetch("/api/pl-history"),
         ]);
         const gameJson = await gameRes.json();
         const agentJson = await agentRes.json();
+        const histJson = await histRes.json();
         setData(gameJson.data || []);
+        setPreviousPL(histJson.totalPL ?? 0);
         const map = {};
         (agentJson.agents || []).forEach((a) => {
           map[a.agentId] = a;
@@ -192,7 +203,7 @@ export default function AdminHome() {
         useCORS: true,
       });
       canvas.toBlob(async (blob) => {
-        const date = new Date().toLocaleDateString("en-GB").replace(/\//g, "-");
+        const date = new Date().toLocaleDateString("en-GB", { timeZone: "Asia/Riyadh" }).replace(/\//g, "-");
         const file = new File([blob], `summary-${date}.png`, {
           type: "image/png",
         });
@@ -330,6 +341,41 @@ export default function AdminHome() {
               </tfoot>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* Accumulated P/L — always visible once loaded */}
+      {previousPL !== null && (previousPL !== 0 || rows.length > 0) && (
+        <div className="mt-4 bg-gray-900 border border-gray-700 rounded-xl p-4 space-y-2">
+          <div className="text-xs text-gray-500 uppercase tracking-wider mb-2">Accumulated P/L</div>
+          {previousPL !== 0 && (
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-gray-400">Previous Sessions</span>
+              <span className={`font-mono font-bold ${previousPL >= 0 ? "text-green-400" : "text-red-400"}`}>
+                {fmt(Math.abs(previousPL))} {previousPL >= 0 ? "BANKER" : "AGENT"}
+              </span>
+            </div>
+          )}
+          {rows.length > 0 && (
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-gray-400">Current Session</span>
+              <span className={`font-mono font-bold ${grandPL >= 0 ? "text-green-400" : "text-red-400"}`}>
+                {fmt(Math.abs(grandPL))} {grandTag}
+              </span>
+            </div>
+          )}
+          {previousPL !== 0 && rows.length > 0 && (() => {
+            const combined = previousPL + grandPL;
+            const combinedTag = combined >= 0 ? "BANKER" : "AGENT";
+            return (
+              <div className="flex justify-between items-center pt-2 border-t border-gray-700 text-sm font-bold">
+                <span className="text-white">Grand Total</span>
+                <span className={`font-mono text-lg ${combined >= 0 ? "text-green-400" : "text-red-400"}`}>
+                  {fmt(Math.abs(combined))} {combinedTag}
+                </span>
+              </div>
+            );
+          })()}
         </div>
       )}
 
