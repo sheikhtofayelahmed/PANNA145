@@ -198,7 +198,7 @@ export default function AdminHome() {
       (row.totalWin?.jodi || 0) * 80;
   });
 
-  // Apply win discount at agent aggregate level
+  // Apply win discount at agent aggregate level, sort by agent serial
   const rows = Object.entries(groups).map(([agentId, g]) => {
     const agent = agentMap[agentId];
     const gameDisc = (agent?.gameDiscount || 0) / 100;
@@ -216,8 +216,9 @@ export default function AdminHome() {
       pl,
       tag,
       winDiscApplied: applyWinDisc,
+      serial: agentMap[agentId]?.serial ?? 999,
     };
-  });
+  }).sort((a, b) => a.serial - b.serial);
 
   const grandGame = rows.reduce((s, r) => s + r.netGame, 0);
   const grandWin = rows.reduce((s, r) => s + r.rawWin, 0);

@@ -8,6 +8,7 @@ export default async function handler(req, res) {
     const agents = await db
       .collection("agents")
       .find({}, { projection: { _id: 0 } })
+      .sort({ serial: 1 })
       .toArray();
     return res.status(200).json({ agents });
   } catch (err) {

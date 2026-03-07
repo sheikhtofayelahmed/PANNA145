@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 function ConfirmModal({ target, onConfirm, onCancel }) {
   const [typed, setTyped] = useState("");
@@ -49,6 +49,7 @@ export default function AdminAgentsPage() {
   const [editWinDiscount, setEditWinDiscount] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null); // { agentId, name }
+  const dragIndex = useRef(null);
 
   function flash(type, text) {
     setMsg({ type, text });
@@ -91,6 +92,24 @@ export default function AdminAgentsPage() {
   }
 
   function cancelEdit() { setEditId(null); }
+
+  function handleDragStart(i) { dragIndex.current = i; }
+
+  function handleDrop(i) {
+    if (dragIndex.current === null || dragIndex.current === i) return;
+    const reordered = [...agents];
+    const [moved] = reordered.splice(dragIndex.current, 1);
+    reordered.splice(i, 0, moved);
+    dragIndex.current = null;
+    // Assign serial 1,2,3... and persist
+    const withSerial = reordered.map((a, idx) => ({ ...a, serial: idx + 1 }));
+    setAgents(withSerial);
+    fetch("/api/agents", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ order: withSerial.map((a, idx) => ({ agentId: a.agentId, serial: idx + 1 })) }),
+    }).then(() => flash("success", "Order saved"));
+  }
 
   async function handleSave(agentId) {
     setSaving(true);
@@ -174,8 +193,13 @@ export default function AdminAgentsPage() {
         <p className="text-gray-600 text-sm text-center py-8 border border-dashed border-gray-700 rounded-lg">No agents yet</p>
       ) : (
         <div className="space-y-3">
-          {agents.map((agent) => (
-            <div key={agent.agentId} className="bg-gray-900 border border-gray-700 rounded-xl p-4">
+          {agents.map((agent, i) => (
+            <div key={agent.agentId}
+              draggable
+              onDragStart={() => handleDragStart(i)}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => handleDrop(i)}
+              className="bg-gray-900 border border-gray-700 rounded-xl p-4 cursor-grab active:cursor-grabbing">
               {editId === agent.agentId ? (
                 <div className="space-y-3">
                   <p className="text-yellow-400 font-bold text-sm">{agent.agentId}</p>
@@ -207,11 +231,15 @@ export default function AdminAgentsPage() {
                 </div>
               ) : (
                 <div className="flex items-center justify-between">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <span className="text-white font-bold">{agent.name}</span>
-                    <span className="text-xs text-gray-500">{agent.agentId}</span>
-                    <span className="text-xs px-2 py-0.5 rounded bg-gray-800 text-gray-300">G: {agent.gameDiscount ?? 0}%</span>
-                    <span className="text-xs px-2 py-0.5 rounded bg-gray-800 text-gray-300">W: {agent.winDiscount ?? 0}%</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-gray-600 text-lg select-none" title="Drag to reorder">⠿</span>
+                    <span className="text-xs font-mono text-gray-600 w-5 text-right">{i + 1}</span>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="text-white font-bold">{agent.name}</span>
+                      <span className="text-xs text-gray-500">{agent.agentId}</span>
+                      <span className="text-xs px-2 py-0.5 rounded bg-gray-800 text-gray-300">G: {agent.gameDiscount ?? 0}%</span>
+                      <span className="text-xs px-2 py-0.5 rounded bg-gray-800 text-gray-300">W: {agent.winDiscount ?? 0}%</span>
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => startEdit(agent)}

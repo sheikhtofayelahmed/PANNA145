@@ -207,20 +207,23 @@ export default function VisitorPage() {
       pl,
       tag,
       winDiscApplied: applyWinDisc,
+      serial: agentMap[agentId]?.serial ?? 999,
     };
-  });
+  }).sort((a, b) => a.serial - b.serial);
   const grandGame = summaryRows.reduce((s, r) => s + r.netGame, 0);
   const grandWin = summaryRows.reduce((s, r) => s + r.rawWin, 0);
   const grandPL = summaryRows.reduce((s, r) => s + r.pl, 0);
   const grandTag = grandPL >= 0 ? "BANKER" : "AGENT";
 
   const q = search.trim().toLowerCase();
-  const filteredEntries = Object.entries(groups).filter(
-    ([agentId, { agentName }]) =>
-      !q ||
-      agentName.toLowerCase().includes(q) ||
-      agentId.toLowerCase().includes(q),
-  );
+  const filteredEntries = Object.entries(groups)
+    .filter(
+      ([agentId, { agentName }]) =>
+        !q ||
+        agentName.toLowerCase().includes(q) ||
+        agentId.toLowerCase().includes(q),
+    )
+    .sort(([aId], [bId]) => (agentMap[aId]?.serial ?? 999) - (agentMap[bId]?.serial ?? 999));
 
   const sth =
     "border border-gray-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-gray-500 bg-gray-50";
