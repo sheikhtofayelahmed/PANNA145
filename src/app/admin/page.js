@@ -226,38 +226,69 @@ export default function AdminHome() {
   const grandTag = grandPL >= 0 ? "BANKER" : "AGENT";
 
   async function shareWhatsApp() {
-    if (!tableRef.current) return;
+    const date = new Date().toLocaleDateString("en-GB", { timeZone: "Asia/Riyadh" });
+
+    // Build a white print-style table (same as printSummary HTML)
+    const grandColor = grandTag === "BANKER" ? "#166534" : "#991b1b";
+    const dataRows = rows.map((r) => {
+      const plColor = r.tag === "BANKER" ? "#166534" : "#991b1b";
+      return `<tr>
+        <td style="border:1px solid #999;padding:6px 10px;">${r.agentName}</td>
+        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;">${fmt(r.netGame)}</td>
+        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;">${fmt(r.rawWin)}</td>
+        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;font-weight:bold;color:${plColor};">${fmt(Math.abs(r.pl))}${r.winDiscApplied ? '<div style="font-size:10px;color:#1d4ed8;font-weight:normal;">W.disc</div>' : ''}</td>
+        <td style="border:1px solid #999;padding:6px 10px;text-align:center;font-weight:bold;color:${plColor};">${r.tag}</td>
+      </tr>`;
+    }).join("");
+
+    const el = document.createElement("div");
+    el.style.cssText = "position:absolute;left:-9999px;top:0;background:#fff;padding:24px;font-family:Arial,sans-serif;color:#000;width:520px;";
+    el.innerHTML = `
+      <div style="font-size:18px;font-weight:bold;margin-bottom:4px;">Game Summary</div>
+      <div style="font-size:12px;color:#666;margin-bottom:16px;">${date}</div>
+      <table style="border-collapse:collapse;width:100%;">
+        <thead>
+          <tr style="background:#f3f4f6;">
+            <th style="border:1px solid #999;padding:6px 10px;font-size:12px;text-align:left;text-transform:uppercase;letter-spacing:.05em;">Agent</th>
+            <th style="border:1px solid #999;padding:6px 10px;font-size:12px;text-align:right;text-transform:uppercase;letter-spacing:.05em;">Total Game</th>
+            <th style="border:1px solid #999;padding:6px 10px;font-size:12px;text-align:right;text-transform:uppercase;letter-spacing:.05em;">Total Win</th>
+            <th style="border:1px solid #999;padding:6px 10px;font-size:12px;text-align:right;text-transform:uppercase;letter-spacing:.05em;">P / L</th>
+            <th style="border:1px solid #999;padding:6px 10px;font-size:12px;text-align:center;text-transform:uppercase;letter-spacing:.05em;">Tag</th>
+          </tr>
+        </thead>
+        <tbody>${dataRows}</tbody>
+        <tfoot>
+          <tr style="background:#f9fafb;border-top:2px solid #666;font-weight:bold;">
+            <td style="border:1px solid #999;padding:6px 10px;">Total</td>
+            <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;">${fmt(grandGame)}</td>
+            <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;">${fmt(grandWin)}</td>
+            <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:${grandColor};">${fmt(Math.abs(grandPL))}</td>
+            <td style="border:1px solid #999;padding:6px 10px;text-align:center;color:${grandColor};">${grandTag}</td>
+          </tr>
+        </tfoot>
+      </table>`;
+
+    document.body.appendChild(el);
     try {
       const h2c = (await import("html2canvas")).default;
-      const canvas = await h2c(tableRef.current, {
-        scale: 2,
-        backgroundColor: "#030712",
-        useCORS: true,
-      });
+      const canvas = await h2c(el, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
+      document.body.removeChild(el);
       canvas.toBlob(async (blob) => {
-        const date = new Date().toLocaleDateString("en-GB", { timeZone: "Asia/Riyadh" }).replace(/\//g, "-");
-        const file = new File([blob], `summary-${date}.png`, {
-          type: "image/png",
-        });
+        const fname = `summary-${date.replace(/\//g, "-")}.png`;
+        const file = new File([blob], fname, { type: "image/png" });
         try {
           if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              files: [file],
-              title: `Game Summary ${date}`,
-            });
+            await navigator.share({ files: [file], title: `Game Summary ${date}` });
           } else {
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
-            a.href = url;
-            a.download = `summary-${date}.png`;
-            a.click();
+            a.href = url; a.download = fname; a.click();
             URL.revokeObjectURL(url);
           }
-        } catch {
-          /* user cancelled */
-        }
+        } catch { /* user cancelled */ }
       }, "image/png");
     } catch (err) {
+      document.body.removeChild(el);
       console.error(err);
     }
   }
@@ -275,6 +306,11 @@ export default function AdminHome() {
         <div className="flex gap-2">
           {rows.length > 0 && (
             <>
+              <button
+                onClick={shareWhatsApp}
+                className="px-4 py-1.5 text-xs bg-green-800 hover:bg-green-700 text-green-100 font-bold rounded-lg transition">
+                📤 Share
+              </button>
               <button
                 onClick={() =>
                   printSummary(rows, grandGame, grandWin, grandPL, grandTag)
