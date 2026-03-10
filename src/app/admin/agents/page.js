@@ -47,6 +47,7 @@ export default function AdminAgentsPage() {
   const [editName, setEditName] = useState("");
   const [editGameDiscount, setEditGameDiscount] = useState("");
   const [editWinDiscount, setEditWinDiscount] = useState("");
+  const [editShowExtraGames, setEditShowExtraGames] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null); // { agentId, name }
   const dragIndex = useRef(null);
@@ -89,6 +90,7 @@ export default function AdminAgentsPage() {
     setEditName(agent.name || "");
     setEditGameDiscount(agent.gameDiscount ?? "");
     setEditWinDiscount(agent.winDiscount ?? "");
+    setEditShowExtraGames(agent.showExtraGames ?? false);
   }
 
   function cancelEdit() { setEditId(null); }
@@ -116,7 +118,7 @@ export default function AdminAgentsPage() {
     const res = await fetch("/api/agents", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ agentId, name: editName, gameDiscount: editGameDiscount, winDiscount: editWinDiscount }),
+      body: JSON.stringify({ agentId, name: editName, gameDiscount: editGameDiscount, winDiscount: editWinDiscount, showExtraGames: editShowExtraGames }),
     });
     if (res.ok) { flash("success", "Updated"); setEditId(null); load(); }
     else flash("error", "Update failed");
@@ -220,6 +222,14 @@ export default function AdminAgentsPage() {
                         className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-yellow-500" />
                     </div>
                   </div>
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <div
+                      onClick={() => setEditShowExtraGames((v) => !v)}
+                      className={`relative w-10 h-5 rounded-full transition ${editShowExtraGames ? "bg-yellow-500" : "bg-gray-700"}`}>
+                      <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${editShowExtraGames ? "left-5" : "left-0.5"}`} />
+                    </div>
+                    <span className="text-xs text-gray-400">Extra Games</span>
+                  </label>
                   <div className="flex gap-2">
                     <button onClick={() => handleSave(agent.agentId)} disabled={saving}
                       className="px-4 py-1.5 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black font-bold rounded-lg text-sm transition">
@@ -239,6 +249,9 @@ export default function AdminAgentsPage() {
                       <span className="text-xs text-gray-500">{agent.agentId}</span>
                       <span className="text-xs px-2 py-0.5 rounded bg-gray-800 text-gray-300">G: {agent.gameDiscount ?? 0}%</span>
                       <span className="text-xs px-2 py-0.5 rounded bg-gray-800 text-gray-300">W: {agent.winDiscount ?? 0}%</span>
+                      {agent.showExtraGames && (
+                        <span className="text-xs px-2 py-0.5 rounded bg-yellow-900/50 text-yellow-400 font-bold">+Extra</span>
+                      )}
                     </div>
                   </div>
                   <div className="flex gap-2">

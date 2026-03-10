@@ -25,12 +25,13 @@ export default async function handler(req, res) {
       gameDiscount: Number(gameDiscount || 0),
       winDiscount: Number(winDiscount || 0),
       serial: count + 1,
+      showExtraGames: false,
     });
     return res.status(201).json({ message: "Agent created" });
   }
 
   if (req.method === "PUT") {
-    const { agentId, name, gameDiscount, winDiscount, serial } = req.body;
+    const { agentId, name, gameDiscount, winDiscount, serial, showExtraGames } = req.body;
     if (!agentId) return res.status(400).json({ error: "agentId required" });
 
     const update = {};
@@ -38,6 +39,7 @@ export default async function handler(req, res) {
     if (gameDiscount !== undefined) update.gameDiscount = Number(gameDiscount);
     if (winDiscount !== undefined) update.winDiscount = Number(winDiscount);
     if (serial !== undefined && serial !== "") update.serial = Number(serial);
+    if (showExtraGames !== undefined) update.showExtraGames = Boolean(showExtraGames);
 
     await col.updateOne({ agentId }, { $set: update });
     return res.status(200).json({ message: "Updated" });

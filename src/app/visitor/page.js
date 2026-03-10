@@ -391,7 +391,7 @@ export default function VisitorPage() {
               agentName={agentName}
               rows={rows}
               agent={agentMap[agentId]}
-              gameNames={gameNames}
+              gameNames={agentMap[agentId]?.showExtraGames ? gameNames : gameNames.slice(0, 12)}
             />
           ))}
         </div>

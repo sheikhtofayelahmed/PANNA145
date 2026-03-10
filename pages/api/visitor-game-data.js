@@ -16,6 +16,10 @@ export default async function handler(req, res) {
     if (!agentId || !gameName || totalGame == null)
       return res.status(400).json({ error: "agentId, gameName, totalGame required" });
 
+    const existing = await col.findOne({ agentId, gameName });
+    if (existing)
+      return res.status(409).json({ error: "Entry already exists for this agent and game" });
+
     await col.insertOne({
       agentId,
       agentName: agentName || agentId,

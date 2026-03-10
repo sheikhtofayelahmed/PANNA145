@@ -129,11 +129,6 @@ export default function VisitorGameEntry({ moderatorId = "" }) {
     await doSave();
   }
 
-  async function handleDupConfirm() {
-    setDupTarget(null);
-    await doSave();
-  }
-
   async function handleDeleteConfirm() {
     const id = deleteTarget?.id;
     setDeleteTarget(null);
@@ -150,19 +145,33 @@ export default function VisitorGameEntry({ moderatorId = "" }) {
   const agentMap = {};
   agents.forEach((a) => { agentMap[a.agentId] = a; });
 
-  // Filter: only show entries by this moderator (if moderatorId is known)
-  const myRecords = moderatorId
-    ? records.filter((r) => r.moderatorId === moderatorId)
-    : records;
+  // First 12 game names = main; rest = extra
+  const mainGameNames = new Set(gameNames.slice(0, 12).map((g) => g.name));
 
-  // Count entries per agent
-  const agentCountMap = {};
+  // Game names shown in form dropdown — filtered by selected agent's showExtraGames flag
+  const visibleGameNames = selectedAgent?.showExtraGames
+    ? gameNames
+    : gameNames.filter((g) => mainGameNames.has(g.name));
+
+  // Filter: only show entries by this moderator (if moderatorId is known)
+  // Also exclude extra game entries for agents that don't have showExtraGames
+  const myRecords = (moderatorId ? records.filter((r) => r.moderatorId === moderatorId) : records)
+    .filter((r) => {
+      const agent = agentMap[r.agentId];
+      if (agent?.showExtraGames) return true;
+      return mainGameNames.has(r.gameName);
+    });
+
+  // Count entries per game
+  const gameCountMap = {};
   myRecords.forEach((r) => {
-    if (!agentCountMap[r.agentId])
-      agentCountMap[r.agentId] = { name: r.agentName || r.agentId, count: 0 };
-    agentCountMap[r.agentId].count++;
+    gameCountMap[r.gameName] = (gameCountMap[r.gameName] || 0) + 1;
   });
-  const agentCountList = Object.values(agentCountMap);
+  // Order by gameNames serial, then any extras
+  const gameCountList = [
+    ...gameNames.filter((gn) => gameCountMap[gn.name]).map((gn) => ({ name: gn.name, count: gameCountMap[gn.name] })),
+    ...Object.keys(gameCountMap).filter((gn) => !gameNames.find((g) => g.name === gn)).map((gn) => ({ name: gn, count: gameCountMap[gn] })),
+  ];
 
   // Group all records by gameName, preserving serial order from gameNames list
   const gameGroups = [];
@@ -209,7 +218,7 @@ export default function VisitorGameEntry({ moderatorId = "" }) {
           ) : (
             <select value={gameName} onChange={(e) => setGameName(e.target.value)}
               className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none">
-              {gameNames.map((g) => (
+              {visibleGameNames.map((g) => (
                 <option key={g.name} value={g.name}>{g.name}</option>
               ))}
             </select>
@@ -283,19 +292,19 @@ export default function VisitorGameEntry({ moderatorId = "" }) {
           )}
         </div>
 
-        {/* Agent entry count summary */}
-        {agentCountList.length > 0 && (
+        {/* Game entry count summary */}
+        {gameCountList.length > 0 && (
           <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
             <div className="px-4 py-2 bg-gray-800 border-b border-gray-700 flex items-center justify-between">
-              <span className="text-xs text-gray-400 uppercase tracking-wider">Agents</span>
-              <span className="text-xs font-bold text-white">{agentCountList.length}</span>
+              <span className="text-xs text-gray-400 uppercase tracking-wider">Games</span>
+              <span className="text-xs font-bold text-white">{gameCountList.length}</span>
             </div>
             <div className="divide-y divide-gray-800">
-              {agentCountList.map((a, i) => (
+              {gameCountList.map((g, i) => (
                 <div key={i} className="flex items-center justify-between px-4 py-2">
-                  <span className="text-sm text-gray-200">{a.name}</span>
+                  <span className="text-sm text-gray-200">{g.name}</span>
                   <span className="text-xs font-mono text-yellow-400 font-bold">
-                    {a.count} {a.count === 1 ? "entry" : "entries"}
+                    {g.count} {g.count === 1 ? "entry" : "entries"}
                   </span>
                 </div>
               ))}
@@ -307,18 +316,14 @@ export default function VisitorGameEntry({ moderatorId = "" }) {
           <p className="text-center text-gray-700 text-sm py-6 border border-dashed border-gray-800 rounded-lg">No entries yet</p>
         ) : (
           gameGroups.map(({ gameName, recs }) => {
-            // Totals for this game name block
-            let totalNetGame = 0, totalRawWin = 0, totalPL = 0;
-            let anyWinDisc = false;
+            // Totals for this game name block — raw values only
+            let totalRawGame = 0, totalPanna = 0, totalSingle = 0, totalJodi = 0;
             recs.forEach((r) => {
-              const agent = agentMap[r.agentId];
-              const c = calcRow(r, agent);
-              totalNetGame += c.netGame;
-              totalRawWin  += c.rawWin;
-              totalPL      += c.pl;
-              if (c.applyWinDisc) anyWinDisc = true;
+              totalRawGame += r.totalGame || 0;
+              totalPanna   += r.totalWin?.panna  || 0;
+              totalSingle  += r.totalWin?.single || 0;
+              totalJodi    += r.totalWin?.jodi   || 0;
             });
-            const totalTag = totalPL >= 0 ? "BANKER" : "AGENT";
 
             return (
               <div key={gameName} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
@@ -329,46 +334,39 @@ export default function VisitorGameEntry({ moderatorId = "" }) {
 
                 {/* Agent rows for this game */}
                 <div className="overflow-x-auto">
-                <div className="divide-y divide-gray-800" style={{minWidth:"360px"}}>
+                <div className="divide-y divide-gray-800" style={{minWidth:"340px"}}>
                   {/* Column headers */}
-                  <div className="grid grid-cols-[1fr_80px_80px_100px_32px] gap-1 px-3 py-1.5 text-xs text-gray-600 uppercase tracking-wider">
+                  <div className="grid grid-cols-[1fr_70px_50px_50px_50px_32px] gap-1 px-3 py-1.5 text-xs text-gray-600 uppercase tracking-wider">
                     <span>Agent</span>
                     <span className="text-right">Game</span>
-                    <span className="text-right">Win</span>
-                    <span className="text-right">P/L</span>
+                    <span className="text-right">Pana</span>
+                    <span className="text-right">Single</span>
+                    <span className="text-right">Jodi</span>
                     <span></span>
                   </div>
 
-                  {recs.map((r) => {
-                    const agent = agentMap[r.agentId];
-                    const { netGame, rawWin, pl, tag, applyWinDisc } = calcRow(r, agent);
-                    return (
-                      <div key={r._id} className="grid grid-cols-[1fr_80px_80px_100px_32px] gap-1 px-3 py-2 text-xs items-center">
-                        <span className="text-gray-200">{r.agentName || r.agentId}</span>
-                        <span className="text-right font-mono text-gray-300">{fmt(netGame)}</span>
-                        <span className="text-right font-mono text-gray-300">{fmt(rawWin)}</span>
-                        <span className={`text-right font-mono font-bold text-[10px] ${tag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
-                          {fmt(Math.abs(pl))} {tag}
-                          {applyWinDisc && <div className="text-blue-400 font-normal">W.disc</div>}
-                        </span>
-                        <button onClick={() => setDeleteTarget({ id: r._id, agentName: r.agentName || r.agentId, gameName: r.gameName })}
-                          className="text-gray-700 hover:text-red-400 transition text-base text-center">×</button>
-                      </div>
-                    );
-                  })}
+                  {recs.map((r) => (
+                    <div key={r._id} className="grid grid-cols-[1fr_70px_50px_50px_50px_32px] gap-1 px-3 py-2 text-xs items-center">
+                      <span className="text-gray-200">{r.agentName || r.agentId}</span>
+                      <span className="text-right font-mono text-gray-300">{r.totalGame || 0}</span>
+                      <span className="text-right font-mono text-gray-300">{r.totalWin?.panna || "—"}</span>
+                      <span className="text-right font-mono text-gray-300">{r.totalWin?.single || "—"}</span>
+                      <span className="text-right font-mono text-gray-300">{r.totalWin?.jodi || "—"}</span>
+                      <button onClick={() => setDeleteTarget({ id: r._id, agentName: r.agentName || r.agentId, gameName: r.gameName })}
+                        className="text-gray-700 hover:text-red-400 transition text-base text-center">×</button>
+                    </div>
+                  ))}
                 </div>
                 </div>{/* overflow-x-auto */}
 
                 {/* Game name totals */}
                 <div className="overflow-x-auto">
-                <div className="px-3 py-2.5 bg-gray-800/60 border-t border-gray-700 grid grid-cols-[1fr_80px_80px_100px_32px] gap-1 text-xs font-bold" style={{minWidth:"360px"}}>
+                <div className="px-3 py-2.5 bg-gray-800/60 border-t border-gray-700 grid grid-cols-[1fr_70px_50px_50px_50px_32px] gap-1 text-xs font-bold" style={{minWidth:"280px"}}>
                   <span className="text-gray-400">Total</span>
-                  <span className="text-right font-mono text-white">{fmt(totalNetGame)}</span>
-                  <span className="text-right font-mono text-white">{fmt(totalRawWin)}</span>
-                  <span className={`text-right font-mono text-[10px] ${totalTag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
-                    {fmt(Math.abs(totalPL))} {totalTag}
-                    {anyWinDisc && <div className="text-blue-400 font-normal">W.disc</div>}
-                  </span>
+                  <span className="text-right font-mono text-white">{totalRawGame}</span>
+                  <span className="text-right font-mono text-white">{totalPanna || "—"}</span>
+                  <span className="text-right font-mono text-white">{totalSingle || "—"}</span>
+                  <span className="text-right font-mono text-white">{totalJodi || "—"}</span>
                   <span></span>
                 </div>
                 </div>{/* overflow-x-auto totals */}
@@ -378,18 +376,18 @@ export default function VisitorGameEntry({ moderatorId = "" }) {
         )}
       </div>
 
-      {/* Duplicate entry warning modal */}
+      {/* Duplicate entry error modal */}
       {dupTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-          <div className="bg-gray-900 border border-yellow-700 rounded-2xl p-6 w-full max-w-sm mx-4 space-y-4">
+          <div className="bg-gray-900 border border-red-800 rounded-2xl p-6 w-full max-w-sm mx-4 space-y-4">
             <div className="flex items-center gap-2">
-              <span className="text-xl">⚠️</span>
-              <h2 className="text-base font-bold text-yellow-400 uppercase tracking-wider">
+              <span className="text-xl">🚫</span>
+              <h2 className="text-base font-bold text-red-400 uppercase tracking-wider">
                 Duplicate Entry
               </h2>
             </div>
             <p className="text-sm text-gray-400">
-              This agent already has an entry for this game.
+              An entry already exists for this agent and game. Each agent can only have one entry per game.
             </p>
             <div className="bg-gray-800 rounded-xl p-4 space-y-1">
               <div className="text-xs text-gray-500 uppercase tracking-wider">Agent</div>
@@ -397,19 +395,11 @@ export default function VisitorGameEntry({ moderatorId = "" }) {
               <div className="text-xs text-gray-500 uppercase tracking-wider mt-2">Game</div>
               <div className="text-yellow-400 font-semibold">{dupTarget.gameName}</div>
             </div>
-            <p className="text-xs text-gray-500">Do you want to save it anyway?</p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setDupTarget(null)}
-                className="flex-1 py-2 rounded-lg text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 transition">
-                Cancel
-              </button>
-              <button
-                onClick={handleDupConfirm}
-                className="flex-1 py-2 rounded-lg text-sm bg-yellow-700 hover:bg-yellow-600 text-white font-bold transition">
-                Save Anyway
-              </button>
-            </div>
+            <button
+              onClick={() => setDupTarget(null)}
+              className="w-full py-2 rounded-lg text-sm bg-gray-700 hover:bg-gray-600 text-white font-bold transition">
+              OK
+            </button>
           </div>
         </div>
       )}
