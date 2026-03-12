@@ -22,27 +22,37 @@ function fmt(n) {
   return Math.round(n).toLocaleString();
 }
 
-function printSummary(rows, grandGame, grandWin, grandPL, grandTag) {
+function printSummary(rows, grandGame, grandWin, grandPL, grandTag, expense = 0, expenseLabel = "Expense", adjustedGrandPL = null, adjustedGrandTag = null) {
   const date = new Date().toLocaleDateString("en-GB", { timeZone: "Asia/Riyadh" });
+  const netPL = adjustedGrandPL ?? grandPL;
+  const netTag = adjustedGrandTag ?? grandTag;
 
   const dataRows = rows
     .map((r) => {
       const plColor = r.tag === "BANKER" ? "#166534" : "#991b1b";
-      const plCell = r.winDiscApplied
-        ? `<div style="font-family:monospace;font-weight:bold;color:${plColor};">${fmt(Math.abs(r.pl))}</div>
-         <div style="font-size:10px;color:#1d4ed8;">W.disc applied</div>`
-        : `<div style="font-family:monospace;font-weight:bold;color:${plColor};">${fmt(Math.abs(r.pl))}</div>`;
+      const winCell = r.winDiscApplied && r.winDiscAmount > 0
+        ? `<div style="font-family:monospace;">${fmt(r.rawWin)}</div><div style="font-size:10px;color:#1d4ed8;">+${fmt(r.winDiscAmount)} W.disc</div>`
+        : `<div style="font-family:monospace;">${fmt(r.rawWin)}</div>`;
       return `<tr>
       <td style="border:1px solid #999;padding:6px 10px;">${r.agentName}</td>
       <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;">${fmt(r.netGame)}</td>
-      <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;">${fmt(r.rawWin)}</td>
-      <td style="border:1px solid #999;padding:6px 10px;text-align:right;">${plCell}</td>
+      <td style="border:1px solid #999;padding:6px 10px;text-align:right;">${winCell}</td>
+      <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;font-weight:bold;color:${plColor};">${fmt(Math.abs(r.pl))}</td>
       <td style="border:1px solid #999;padding:6px 10px;text-align:center;font-weight:bold;color:${plColor};">${r.tag}</td>
     </tr>`;
     })
     .join("");
 
   const grandColor = grandTag === "BANKER" ? "#166534" : "#991b1b";
+  const netColor = netTag === "BANKER" ? "#166534" : "#991b1b";
+  const expenseRow = expense !== 0 ? `
+    <tr>
+      <td style="border:1px solid #999;padding:6px 10px;color:#666;font-style:italic;">${expenseLabel}</td>
+      <td style="border:1px solid #999;padding:6px 10px;"></td>
+      <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#991b1b;">${fmt(expense)}</td>
+      <td style="border:1px solid #999;padding:6px 10px;"></td>
+      <td style="border:1px solid #999;padding:6px 10px;"></td>
+    </tr>` : "";
 
   const html = `<!DOCTYPE html>
 <html>
@@ -74,14 +84,14 @@ function printSummary(rows, grandGame, grandWin, grandPL, grandTag) {
         <th style="text-align:center;">Tag</th>
       </tr>
     </thead>
-    <tbody>${dataRows}</tbody>
+    <tbody>${dataRows}${expenseRow}</tbody>
     <tfoot>
-      <tr>
+      <tr style="font-weight:bold;background:#f9fafb;border-top:2px solid #666;">
         <td>Total</td>
         <td style="text-align:right;font-family:monospace;">${fmt(grandGame)}</td>
-        <td style="text-align:right;font-family:monospace;">${fmt(grandWin)}</td>
-        <td style="text-align:right;font-family:monospace;color:${grandColor};">${fmt(Math.abs(grandPL))}</td>
-        <td style="text-align:center;color:${grandColor};">${grandTag}</td>
+        <td style="text-align:right;font-family:monospace;">${fmt(grandWin + expense)}</td>
+        <td style="text-align:right;font-family:monospace;color:${netColor};">${fmt(Math.abs(netPL))}</td>
+        <td style="text-align:center;color:${netColor};">${netTag}</td>
       </tr>
     </tfoot>
   </table>
@@ -103,7 +113,12 @@ export default function AdminHome() {
   const [clearText, setClearText] = useState("");
   const [previousPL, setPreviousPL] = useState(null); // accumulated P/L from past clears
   const [summaryHistory, setSummaryHistory] = useState([]);
-  const [expandedHistory, setExpandedHistory] = useState(null); // index of expanded past summary
+  const [expandedHistory, setExpandedHistory] = useState(null);
+  const [expense, setExpense] = useState(0);
+  const [expenseLabel, setExpenseLabel] = useState("Expense");
+  const [editingExpense, setEditingExpense] = useState(false);
+  const [expenseInput, setExpenseInput] = useState("");
+  const [expenseLabelInput, setExpenseLabelInput] = useState("");
   const tableRef = useRef(null);
 
   const CLEAR_KEYWORD = "CLEAR ALL";
@@ -118,7 +133,7 @@ export default function AdminHome() {
       fetch("/api/pl-history", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pl: grandPL }),
+        body: JSON.stringify({ pl: adjustedGrandPL }),
       }),
       fetch("/api/summary-history", {
         method: "POST",
@@ -132,11 +147,16 @@ export default function AdminHome() {
             pl: r.pl,
             tag: r.tag,
             winDiscApplied: r.winDiscApplied,
+            winDiscAmount: r.winDiscAmount,
           })),
           grandGame,
           grandWin,
           grandPL,
           grandTag,
+          expense,
+          expenseLabel,
+          adjustedGrandPL,
+          adjustedGrandTag,
         }),
       }),
     ]);
@@ -145,9 +165,9 @@ export default function AdminHome() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clearAll: true }),
     });
-    setPreviousPL((prev) => (prev ?? 0) + grandPL);
+    setPreviousPL((prev) => (prev ?? 0) + adjustedGrandPL);
     setSummaryHistory((prev) => [
-      { date: saDate, rows: rows.map((r) => ({ ...r })), grandGame, grandWin, grandPL, grandTag, clearedAt: new Date().toISOString() },
+      { date: saDate, rows: rows.map((r) => ({ ...r })), grandGame, grandWin, grandPL, grandTag, expense, expenseLabel, adjustedGrandPL, adjustedGrandTag, clearedAt: new Date().toISOString() },
       ...prev,
     ]);
     setData([]);
@@ -157,19 +177,23 @@ export default function AdminHome() {
   useEffect(() => {
     async function load() {
       try {
-        const [gameRes, agentRes, histRes, summaryRes] = await Promise.all([
+        const [gameRes, agentRes, histRes, summaryRes, expenseRes] = await Promise.all([
           fetch("/api/visitor-game-data"),
           fetch("/api/get-all-agents"),
           fetch("/api/pl-history"),
           fetch("/api/summary-history"),
+          fetch("/api/expense"),
         ]);
         const gameJson = await gameRes.json();
         const agentJson = await agentRes.json();
         const histJson = await histRes.json();
         const summaryJson = await summaryRes.json();
+        const expenseJson = await expenseRes.json();
         setData(gameJson.data || []);
         setPreviousPL(histJson.totalPL ?? 0);
         setSummaryHistory(summaryJson.records || []);
+        setExpense(expenseJson.amount ?? 0);
+        setExpenseLabel(expenseJson.label || "Expense");
         const map = {};
         (agentJson.agents || []).forEach((a) => {
           map[a.agentId] = a;
@@ -207,6 +231,7 @@ export default function AdminHome() {
     const applyWinDisc = winDisc > 0 && g.rawTotWin < g.rawTotGame;
     const initialPL = netGame - g.rawTotWin;
     const pl = applyWinDisc ? initialPL * (1 - winDisc) : initialPL;
+    const winDiscAmount = applyWinDisc ? initialPL * winDisc : 0;
     const tag = pl >= 0 ? "BANKER" : "AGENT";
     return {
       agentId,
@@ -216,6 +241,7 @@ export default function AdminHome() {
       pl,
       tag,
       winDiscApplied: applyWinDisc,
+      winDiscAmount,
       serial: agentMap[agentId]?.serial ?? 999,
     };
   }).sort((a, b) => a.serial - b.serial);
@@ -224,22 +250,36 @@ export default function AdminHome() {
   const grandWin = rows.reduce((s, r) => s + r.rawWin, 0);
   const grandPL = rows.reduce((s, r) => s + r.pl, 0);
   const grandTag = grandPL >= 0 ? "BANKER" : "AGENT";
+  const adjustedGrandPL = grandPL - expense;
+  const adjustedGrandTag = adjustedGrandPL >= 0 ? "BANKER" : "AGENT";
 
   async function shareWhatsApp() {
     const date = new Date().toLocaleDateString("en-GB", { timeZone: "Asia/Riyadh" });
 
     // Build a white print-style table (same as printSummary HTML)
     const grandColor = grandTag === "BANKER" ? "#166534" : "#991b1b";
+    const netColor = adjustedGrandTag === "BANKER" ? "#166534" : "#991b1b";
     const dataRows = rows.map((r) => {
       const plColor = r.tag === "BANKER" ? "#166534" : "#991b1b";
+      const winCell = r.winDiscApplied && r.winDiscAmount > 0
+        ? `<div style="font-family:monospace;">${fmt(r.rawWin)}</div><div style="font-size:10px;color:#1d4ed8;">+${fmt(r.winDiscAmount)} W.disc</div>`
+        : `<div style="font-family:monospace;">${fmt(r.rawWin)}</div>`;
       return `<tr>
         <td style="border:1px solid #999;padding:6px 10px;">${r.agentName}</td>
         <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;">${fmt(r.netGame)}</td>
-        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;">${fmt(r.rawWin)}</td>
-        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;font-weight:bold;color:${plColor};">${fmt(Math.abs(r.pl))}${r.winDiscApplied ? '<div style="font-size:10px;color:#1d4ed8;font-weight:normal;">W.disc</div>' : ''}</td>
+        <td style="border:1px solid #999;padding:6px 10px;text-align:right;">${winCell}</td>
+        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;font-weight:bold;color:${plColor};">${fmt(Math.abs(r.pl))}</td>
         <td style="border:1px solid #999;padding:6px 10px;text-align:center;font-weight:bold;color:${plColor};">${r.tag}</td>
       </tr>`;
     }).join("");
+    const expenseRowHtml = expense !== 0 ? `
+      <tr>
+        <td style="border:1px solid #999;padding:6px 10px;color:#666;font-style:italic;">${expenseLabel}</td>
+        <td style="border:1px solid #999;padding:6px 10px;"></td>
+        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#991b1b;">${fmt(expense)}</td>
+        <td style="border:1px solid #999;padding:6px 10px;"></td>
+        <td style="border:1px solid #999;padding:6px 10px;"></td>
+      </tr>` : "";
 
     const el = document.createElement("div");
     el.style.cssText = "position:absolute;left:-9999px;top:0;background:#fff;padding:24px;font-family:Arial,sans-serif;color:#000;width:520px;";
@@ -256,14 +296,14 @@ export default function AdminHome() {
             <th style="border:1px solid #999;padding:6px 10px;font-size:12px;text-align:center;text-transform:uppercase;letter-spacing:.05em;">Tag</th>
           </tr>
         </thead>
-        <tbody>${dataRows}</tbody>
+        <tbody>${dataRows}${expenseRowHtml}</tbody>
         <tfoot>
           <tr style="background:#f9fafb;border-top:2px solid #666;font-weight:bold;">
             <td style="border:1px solid #999;padding:6px 10px;">Total</td>
             <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;">${fmt(grandGame)}</td>
-            <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;">${fmt(grandWin)}</td>
-            <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:${grandColor};">${fmt(Math.abs(grandPL))}</td>
-            <td style="border:1px solid #999;padding:6px 10px;text-align:center;color:${grandColor};">${grandTag}</td>
+            <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;">${fmt(grandWin + expense)}</td>
+            <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:${netColor};">${fmt(Math.abs(adjustedGrandPL))}</td>
+            <td style="border:1px solid #999;padding:6px 10px;text-align:center;color:${netColor};">${adjustedGrandTag}</td>
           </tr>
         </tfoot>
       </table>`;
@@ -313,7 +353,7 @@ export default function AdminHome() {
               </button>
               <button
                 onClick={() =>
-                  printSummary(rows, grandGame, grandWin, grandPL, grandTag)
+                  printSummary(rows, grandGame, grandWin, grandPL, grandTag, expense, expenseLabel, adjustedGrandPL, adjustedGrandTag)
                 }
                 className="px-4 py-1.5 text-xs border border-gray-600 hover:bg-gray-800 text-gray-300 font-bold rounded-lg transition">
                 🖨 Print
@@ -359,20 +399,15 @@ export default function AdminHome() {
                 {rows.map((r) => (
                   <tr key={r.agentId} className="hover:bg-gray-900/40">
                     <td className={`${td} font-medium`}>{r.agentName}</td>
-                    <td className={`${td} text-right font-mono`}>
-                      {fmt(r.netGame)}
-                    </td>
-                    <td className={`${td} text-right font-mono`}>
-                      {fmt(r.rawWin)}
-                    </td>
+                    <td className={`${td} text-right font-mono`}>{fmt(r.netGame)}</td>
                     <td className={`${td} text-right`}>
-                      <div
-                        className={`font-mono font-bold ${r.tag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
-                        {fmt(Math.abs(r.pl))}
-                      </div>
-                      {r.winDiscApplied && (
-                        <div className="text-xs text-blue-400">W.disc</div>
+                      <div className="font-mono">{fmt(r.rawWin)}</div>
+                      {r.winDiscApplied && r.winDiscAmount > 0 && (
+                        <div className="text-xs text-blue-400 font-mono">+{fmt(r.winDiscAmount)} W.disc</div>
                       )}
+                    </td>
+                    <td className={`${td} text-right font-mono font-bold ${r.tag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
+                      {fmt(Math.abs(r.pl))}
                     </td>
                     <td className={`${td} text-center`}>
                       <span
@@ -382,27 +417,27 @@ export default function AdminHome() {
                     </td>
                   </tr>
                 ))}
+                {expense !== 0 && (
+                  <tr className="hover:bg-gray-900/40">
+                    <td className={`${td} text-gray-400 italic`}>{expenseLabel}</td>
+                    <td className={`${td}`}></td>
+                    <td className={`${td} text-right font-mono text-red-400`}>{fmt(expense)}</td>
+                    <td className={`${td}`}></td>
+                    <td className={`${td}`}></td>
+                  </tr>
+                )}
               </tbody>
               <tfoot>
                 <tr className="bg-gray-900 border-t-2 border-gray-600 font-bold">
-                  <td
-                    className={`${td} text-xs uppercase tracking-wider text-gray-400`}>
-                    Total
-                  </td>
-                  <td className={`${td} text-right font-mono`}>
-                    {fmt(grandGame)}
-                  </td>
-                  <td className={`${td} text-right font-mono`}>
-                    {fmt(grandWin)}
-                  </td>
-                  <td
-                    className={`${td} text-right font-mono font-bold ${grandTag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
-                    {fmt(Math.abs(grandPL))}
+                  <td className={`${td} text-xs uppercase tracking-wider text-gray-400`}>Total</td>
+                  <td className={`${td} text-right font-mono`}>{fmt(grandGame)}</td>
+                  <td className={`${td} text-right font-mono`}>{fmt(grandWin + expense)}</td>
+                  <td className={`${td} text-right font-mono font-bold ${adjustedGrandTag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
+                    {fmt(Math.abs(adjustedGrandPL))}
                   </td>
                   <td className={`${td} text-center`}>
-                    <span
-                      className={`text-xs font-bold px-2 py-0.5 rounded ${grandTag === "BANKER" ? "bg-green-900/50 text-green-400" : "bg-red-900/50 text-red-400"}`}>
-                      {grandTag}
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded ${adjustedGrandTag === "BANKER" ? "bg-green-900/50 text-green-400" : "bg-red-900/50 text-red-400"}`}>
+                      {adjustedGrandTag}
                     </span>
                   </td>
                 </tr>
@@ -446,6 +481,66 @@ export default function AdminHome() {
           })()}
         </div>
       )}
+
+      {/* Expense edit */}
+      <div className="mt-4 bg-gray-900 border border-gray-700 rounded-xl p-4">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xs text-gray-500 uppercase tracking-wider">Expense</span>
+          {!editingExpense && (
+            <button
+              onClick={() => { setExpenseInput(String(expense)); setExpenseLabelInput(expenseLabel); setEditingExpense(true); }}
+              className="text-xs text-gray-400 hover:text-white border border-gray-700 rounded px-2 py-0.5 transition">
+              Edit
+            </button>
+          )}
+        </div>
+        {editingExpense ? (
+          <div className="space-y-2">
+            <input
+              type="text"
+              value={expenseLabelInput}
+              onChange={(e) => setExpenseLabelInput(e.target.value)}
+              placeholder="Label (e.g. Rent, Staff)"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none"
+            />
+            <input
+              type="number"
+              min="0"
+              value={expenseInput}
+              onChange={(e) => setExpenseInput(e.target.value)}
+              placeholder="0"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={async () => {
+                  const amt = Number(expenseInput || 0);
+                  await fetch("/api/expense", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ amount: amt, label: expenseLabelInput || "Expense" }),
+                  });
+                  setExpense(amt);
+                  setExpenseLabel(expenseLabelInput || "Expense");
+                  setEditingExpense(false);
+                }}
+                className="flex-1 py-1.5 rounded-lg text-xs bg-white text-black font-bold hover:bg-gray-200 transition">
+                Save
+              </button>
+              <button
+                onClick={() => setEditingExpense(false)}
+                className="flex-1 py-1.5 rounded-lg text-xs bg-gray-800 text-gray-300 hover:bg-gray-700 transition">
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-gray-400">{expenseLabel}</span>
+            <span className="font-mono font-bold text-red-400">{expense !== 0 ? `-${fmt(expense)}` : "—"}</span>
+          </div>
+        )}
+      </div>
 
       {/* Past Summaries */}
       {summaryHistory.length > 0 && (
