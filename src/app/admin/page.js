@@ -19,13 +19,14 @@ function printSummary(
   const totWin = grandWin + totalWinDisc + expenseWin;
 
   const dataRows = rows
-    .map((r) => {
+    .map((r, i) => {
       const plColor = r.tag === "BANKER" ? "#166534" : "#991b1b";
       const winCell =
         r.winDiscApplied && r.winDiscAmount > 0
           ? `<div style="font-family:monospace;">${fmt(r.rawWin)}</div><div style="font-size:10px;color:#1d4ed8;">+${fmt(r.winDiscAmount)} W.disc</div>`
           : `<div style="font-family:monospace;">${fmt(r.rawWin)}</div>`;
       return `<tr>
+      <td style="border:1px solid #999;padding:6px 10px;text-align:center;color:#888;">${i + 1}</td>
       <td style="border:1px solid #999;padding:6px 10px;">${r.agentName}</td>
       <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;">${fmt(r.netGame)}</td>
       <td style="border:1px solid #999;padding:6px 10px;text-align:right;">${winCell}</td>
@@ -40,6 +41,7 @@ function printSummary(
   const expenseGameRow =
     expenseGame !== 0
       ? `<tr>
+      <td style="border:1px solid #999;padding:6px 10px;"></td>
       <td style="border:1px solid #999;padding:6px 10px;color:#666;font-style:italic;">${expenseLabelGame}</td>
       <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#991b1b;">${fmt(expenseGame)}</td>
       <td style="border:1px solid #999;padding:6px 10px;"></td>
@@ -51,6 +53,7 @@ function printSummary(
   const expenseWinRow =
     expenseWin !== 0
       ? `<tr>
+      <td style="border:1px solid #999;padding:6px 10px;"></td>
       <td style="border:1px solid #999;padding:6px 10px;color:#666;font-style:italic;">${expenseLabelWin}</td>
       <td style="border:1px solid #999;padding:6px 10px;"></td>
       <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#991b1b;">${fmt(expenseWin)}</td>
@@ -82,6 +85,7 @@ function printSummary(
   <table>
     <thead>
       <tr>
+        <th style="text-align:center;width:32px;">#</th>
         <th style="text-align:left;">Agent</th>
         <th style="text-align:right;">Total Game</th>
         <th style="text-align:right;">Total Win</th>
@@ -92,6 +96,7 @@ function printSummary(
     <tbody>${dataRows}${expenseGameRow}${expenseWinRow}</tbody>
     <tfoot>
       <tr style="font-weight:bold;background:#f9fafb;border-top:2px solid #666;">
+        <td></td>
         <td>Total</td>
         <td style="text-align:right;font-family:monospace;">${fmt(totGame)}</td>
         <td style="text-align:right;font-family:monospace;">${fmt(totWin)}</td>
@@ -99,7 +104,7 @@ function printSummary(
         <td style="text-align:center;color:${netColor};">${netTag}</td>
       </tr>
       <tr style="background:#f9fafb;">
-        <td colspan="5" style="font-size:11px;color:#666;font-style:italic;border-top:none;">
+        <td colspan="6" style="font-size:11px;color:#666;font-style:italic;border-top:none;">
           P/L = ${fmt(totGame)} &minus; ${fmt(totWin)} = ${fmt(Math.abs(netPL))} ${netTag}
         </td>
       </tr>
@@ -293,13 +298,14 @@ export default function AdminHome() {
     const date = new Date().toLocaleDateString("en-GB", { timeZone: "Asia/Riyadh" });
     const netColor = adjustedGrandTag === "BANKER" ? "#166534" : "#991b1b";
     const dataRows = rows
-      .map((r) => {
+      .map((r, i) => {
         const plColor = r.tag === "BANKER" ? "#166534" : "#991b1b";
         const winCell =
           r.winDiscApplied && r.winDiscAmount > 0
             ? `<div style="font-family:monospace;">${fmt(r.rawWin)}</div><div style="font-size:10px;color:#1d4ed8;">+${fmt(r.winDiscAmount)} W.disc</div>`
             : `<div style="font-family:monospace;">${fmt(r.rawWin)}</div>`;
         return `<tr>
+        <td style="border:1px solid #999;padding:6px 10px;text-align:center;color:#888;">${i + 1}</td>
         <td style="border:1px solid #999;padding:6px 10px;">${r.agentName}</td>
         <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;">${fmt(r.netGame)}</td>
         <td style="border:1px solid #999;padding:6px 10px;text-align:right;">${winCell}</td>
@@ -312,6 +318,7 @@ export default function AdminHome() {
     const expenseGameRowHtml =
       expenseGame !== 0
         ? `<tr>
+        <td style="border:1px solid #999;padding:6px 10px;"></td>
         <td style="border:1px solid #999;padding:6px 10px;color:#666;font-style:italic;">${expenseLabelGame}</td>
         <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#991b1b;">${fmt(expenseGame)}</td>
         <td style="border:1px solid #999;padding:6px 10px;"></td>
@@ -323,6 +330,7 @@ export default function AdminHome() {
     const expenseWinRowHtml =
       expenseWin !== 0
         ? `<tr>
+        <td style="border:1px solid #999;padding:6px 10px;"></td>
         <td style="border:1px solid #999;padding:6px 10px;color:#666;font-style:italic;">${expenseLabelWin}</td>
         <td style="border:1px solid #999;padding:6px 10px;"></td>
         <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#991b1b;">${fmt(expenseWin)}</td>
@@ -340,6 +348,7 @@ export default function AdminHome() {
       <table style="border-collapse:collapse;width:100%;">
         <thead>
           <tr style="background:#f3f4f6;">
+            <th style="border:1px solid #999;padding:6px 10px;font-size:12px;text-align:center;width:32px;">#</th>
             <th style="border:1px solid #999;padding:6px 10px;font-size:12px;text-align:left;text-transform:uppercase;letter-spacing:.05em;">Agent</th>
             <th style="border:1px solid #999;padding:6px 10px;font-size:12px;text-align:right;text-transform:uppercase;letter-spacing:.05em;">Total Game</th>
             <th style="border:1px solid #999;padding:6px 10px;font-size:12px;text-align:right;text-transform:uppercase;letter-spacing:.05em;">Total Win</th>
@@ -350,6 +359,7 @@ export default function AdminHome() {
         <tbody>${dataRows}${expenseGameRowHtml}${expenseWinRowHtml}</tbody>
         <tfoot>
           <tr style="background:#f9fafb;border-top:2px solid #666;font-weight:bold;">
+            <td style="border:1px solid #999;padding:6px 10px;"></td>
             <td style="border:1px solid #999;padding:6px 10px;">Total</td>
             <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;">${fmt(totGameDisplay)}</td>
             <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;">${fmt(totWinDisplay)}</td>
@@ -357,7 +367,7 @@ export default function AdminHome() {
             <td style="border:1px solid #999;padding:6px 10px;text-align:center;color:${netColor};">${adjustedGrandTag}</td>
           </tr>
           <tr style="background:#f9fafb;">
-            <td colspan="5" style="border:1px solid #999;padding:4px 10px;font-size:10px;color:#666;font-style:italic;">
+            <td colspan="6" style="border:1px solid #999;padding:4px 10px;font-size:10px;color:#666;font-style:italic;">
               P/L = ${fmt(totGameDisplay)} &minus; ${fmt(totWinDisplay)} = ${fmt(Math.abs(adjustedGrandPL))} ${adjustedGrandTag}
             </td>
           </tr>
@@ -445,6 +455,7 @@ export default function AdminHome() {
             <table className="w-full border-collapse" style={{ minWidth: "420px" }}>
               <thead>
                 <tr className="bg-gray-900">
+                  <th className={`${th} text-center w-8`}>#</th>
                   <th className={`${th} text-left`}>Agent</th>
                   <th className={`${th} text-right`}>Total Game</th>
                   <th className={`${th} text-right`}>Total Win</th>
@@ -453,8 +464,9 @@ export default function AdminHome() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => (
+                {rows.map((r, i) => (
                   <tr key={r.agentId} className="hover:bg-gray-900/40">
+                    <td className={`${td} text-center text-gray-500 text-xs`}>{i + 1}</td>
                     <td className={`${td} font-medium`}>{r.agentName}</td>
                     <td className={`${td} text-right font-mono`}>{fmt(r.netGame)}</td>
                     <td className={`${td} text-right`}>
@@ -477,6 +489,7 @@ export default function AdminHome() {
                 ))}
                 {expenseGame !== 0 && (
                   <tr className="hover:bg-gray-900/40">
+                    <td className={`${td}`}></td>
                     <td className={`${td} text-gray-400 italic`}>{expenseLabelGame}</td>
                     <td className={`${td} text-right font-mono text-red-400`}>{fmt(expenseGame)}</td>
                     <td className={`${td}`}></td>
@@ -486,6 +499,7 @@ export default function AdminHome() {
                 )}
                 {expenseWin !== 0 && (
                   <tr className="hover:bg-gray-900/40">
+                    <td className={`${td}`}></td>
                     <td className={`${td} text-gray-400 italic`}>{expenseLabelWin}</td>
                     <td className={`${td}`}></td>
                     <td className={`${td} text-right font-mono text-red-400`}>{fmt(expenseWin)}</td>
@@ -496,6 +510,7 @@ export default function AdminHome() {
               </tbody>
               <tfoot>
                 <tr className="bg-gray-900 border-t-2 border-gray-600 font-bold">
+                  <td className={`${td}`}></td>
                   <td className={`${td} text-xs uppercase tracking-wider text-gray-400`}>Total</td>
                   <td className={`${td} text-right font-mono`}>{fmt(totGameDisplay)}</td>
                   <td className={`${td} text-right font-mono`}>{fmt(totWinDisplay)}</td>
@@ -509,7 +524,7 @@ export default function AdminHome() {
                   </td>
                 </tr>
                 <tr className="bg-gray-900">
-                  <td colSpan={5} className="border border-gray-700 px-3 py-1 text-xs text-gray-500 italic">
+                  <td colSpan={6} className="border border-gray-700 px-3 py-1 text-xs text-gray-500 italic">
                     P/L = {fmt(totGameDisplay)} &minus; {fmt(totWinDisplay)} = {fmt(Math.abs(adjustedGrandPL))} {adjustedGrandTag}
                   </td>
                 </tr>
