@@ -280,7 +280,9 @@ export default function VisitorPage() {
               <tbody>
                 {summaryRows.map((r, i) => (
                   <tr key={r.agentId} className="hover:bg-gray-50">
-                    <td className={`${std} text-center text-gray-400 text-xs`}>{i + 1}</td>
+                    <td className={`${std} text-center text-gray-400 text-xs`}>
+                      {i + 1}
+                    </td>
                     <td className={`${std} font-medium`}>{r.agentName}</td>
                     <td className={`${std} text-right font-mono`}>
                       {fmt(r.netGame)}
@@ -294,7 +296,8 @@ export default function VisitorPage() {
                       )}
                     </td>
                     <td className={`${std} text-right`}>
-                      <div className={`font-mono font-bold ${r.tag === "BANKER" ? "text-green-700" : "text-red-600"}`}>
+                      <div
+                        className={`font-mono font-bold ${r.tag === "BANKER" ? "text-green-700" : "text-red-600"}`}>
                         {fmt(Math.abs(r.pl))}
                       </div>
                       {r.winDiscApplied && r.winDiscAmount > 0 && (
@@ -312,8 +315,12 @@ export default function VisitorPage() {
                 {expenseGame !== 0 && (
                   <tr className="hover:bg-gray-50">
                     <td className={`${std}`}></td>
-                    <td className={`${std} text-gray-400 italic`}>{expenseLabelGame}</td>
-                    <td className={`${std} text-right font-mono text-red-600`}>{fmt(expenseGame)}</td>
+                    <td className={`${std} text-gray-400 italic`}>
+                      {expenseLabelGame}
+                    </td>
+                    <td className={`${std} text-right font-mono text-red-600`}>
+                      {fmt(expenseGame)}
+                    </td>
                     <td className={`${std}`}></td>
                     <td className={`${std}`}></td>
                     <td className={`${std}`}></td>
@@ -322,9 +329,13 @@ export default function VisitorPage() {
                 {expenseWin !== 0 && (
                   <tr className="hover:bg-gray-50">
                     <td className={`${std}`}></td>
-                    <td className={`${std} text-gray-400 italic`}>{expenseLabelWin}</td>
+                    <td className={`${std} text-gray-400 italic`}>
+                      {expenseLabelWin}
+                    </td>
                     <td className={`${std}`}></td>
-                    <td className={`${std} text-right font-mono text-red-600`}>{fmt(expenseWin)}</td>
+                    <td className={`${std} text-right font-mono text-red-600`}>
+                      {fmt(expenseWin)}
+                    </td>
                     <td className={`${std}`}></td>
                     <td className={`${std}`}></td>
                   </tr>
@@ -333,21 +344,25 @@ export default function VisitorPage() {
               <tfoot>
                 <tr className="border-t-2 border-gray-400 bg-gray-50 font-bold">
                   <td className={`${std}`}></td>
-                  <td className={`${std} text-xs uppercase tracking-wider text-gray-500`}>Total</td>
-                  <td className={`${std} text-right font-mono`}>{fmt(totGameDisplay)}</td>
-                  <td className={`${std} text-right font-mono`}>{fmt(totWinDisplay)}</td>
-                  <td className={`${std} text-right font-mono font-bold ${adjustedGrandTag === "BANKER" ? "text-green-700" : "text-red-600"}`}>
+                  <td
+                    className={`${std} text-xs uppercase tracking-wider text-gray-500`}>
+                    Total
+                  </td>
+                  <td className={`${std} text-right font-mono`}>
+                    {fmt(totGameDisplay)}
+                  </td>
+                  <td className={`${std} text-right font-mono`}>
+                    {fmt(totWinDisplay)}
+                  </td>
+                  <td
+                    className={`${std} text-right font-mono font-bold ${adjustedGrandTag === "BANKER" ? "text-green-700" : "text-red-600"}`}>
                     {fmt(Math.abs(adjustedGrandPL))}
                   </td>
                   <td className={`${std} text-center`}>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded ${adjustedGrandTag === "BANKER" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+                    <span
+                      className={`text-xs font-bold px-2 py-0.5 rounded ${adjustedGrandTag === "BANKER" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
                       {adjustedGrandTag}
                     </span>
-                  </td>
-                </tr>
-                <tr className="bg-gray-50">
-                  <td colSpan={6} className="border border-gray-300 px-3 py-1 text-xs text-gray-400 italic">
-                    P/L = {fmt(totGameDisplay)} &minus; {fmt(totWinDisplay)} = {fmt(Math.abs(adjustedGrandPL))} {adjustedGrandTag}
                   </td>
                 </tr>
               </tfoot>
