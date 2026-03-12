@@ -136,19 +136,20 @@ export default function VisitorPage() {
   const [search, setSearch] = useState("");
   const [previousPL, setPreviousPL] = useState(0);
   const [expenseWin, setExpenseWin] = useState(0);
-  const [expenseLabelWin, setExpenseLabelWin] = useState("Expense (Win)");
+  const [expenseLabelWin, setExpenseLabelWin] = useState("Expense (-)");
   const [expenseGame, setExpenseGame] = useState(0);
-  const [expenseLabelGame, setExpenseLabelGame] = useState("Expense (Game)");
+  const [expenseLabelGame, setExpenseLabelGame] = useState("Expense (+)");
 
   async function load() {
     try {
-      const [gameRes, agentRes, nameRes, histRes, expenseRes] = await Promise.all([
-        fetch("/api/visitor-game-data"),
-        fetch("/api/get-all-agents"),
-        fetch("/api/game-names"),
-        fetch("/api/pl-history"),
-        fetch("/api/expense"),
-      ]);
+      const [gameRes, agentRes, nameRes, histRes, expenseRes] =
+        await Promise.all([
+          fetch("/api/visitor-game-data"),
+          fetch("/api/get-all-agents"),
+          fetch("/api/game-names"),
+          fetch("/api/pl-history"),
+          fetch("/api/expense"),
+        ]);
       const gameJson = await gameRes.json();
       const agentJson = await agentRes.json();
       const nameJson = await nameRes.json();
@@ -157,9 +158,9 @@ export default function VisitorPage() {
       setData(gameJson.data || []);
       setPreviousPL(histJson.totalPL ?? 0);
       setExpenseWin(expenseJson.winAmount ?? 0);
-      setExpenseLabelWin(expenseJson.winLabel || "Expense (Win)");
+      setExpenseLabelWin(expenseJson.winLabel || "Expense (-)");
       setExpenseGame(expenseJson.gameAmount ?? 0);
-      setExpenseLabelGame(expenseJson.gameLabel || "Expense (Game)");
+      setExpenseLabelGame(expenseJson.gameLabel || "Expense (+)");
       const map = {};
       (agentJson.agents || []).forEach((a) => {
         map[a.agentId] = a;
@@ -202,28 +203,30 @@ export default function VisitorPage() {
       (row.totalWin?.single || 0) * 9 +
       (row.totalWin?.jodi || 0) * 80;
   });
-  const summaryRows = Object.entries(summaryGroups).map(([agentId, g]) => {
-    const agent = agentMap[agentId];
-    const gameDisc = (agent?.gameDiscount || 0) / 100;
-    const winDisc = (agent?.winDiscount || 0) / 100;
-    const netGame = g.rawTotGame * (1 - gameDisc);
-    const applyWinDisc = winDisc > 0 && g.rawTotWin < g.rawTotGame;
-    const initialPL = netGame - g.rawTotWin;
-    const pl = applyWinDisc ? initialPL * (1 - winDisc) : initialPL;
-    const winDiscAmount = applyWinDisc ? initialPL * winDisc : 0;
-    const tag = pl >= 0 ? "BANKER" : "AGENT";
-    return {
-      agentId,
-      agentName: g.agentName,
-      netGame,
-      rawWin: g.rawTotWin,
-      pl,
-      tag,
-      winDiscApplied: applyWinDisc,
-      winDiscAmount,
-      serial: agentMap[agentId]?.serial ?? 999,
-    };
-  }).sort((a, b) => a.serial - b.serial);
+  const summaryRows = Object.entries(summaryGroups)
+    .map(([agentId, g]) => {
+      const agent = agentMap[agentId];
+      const gameDisc = (agent?.gameDiscount || 0) / 100;
+      const winDisc = (agent?.winDiscount || 0) / 100;
+      const netGame = g.rawTotGame * (1 - gameDisc);
+      const applyWinDisc = winDisc > 0 && g.rawTotWin < g.rawTotGame;
+      const initialPL = netGame - g.rawTotWin;
+      const pl = applyWinDisc ? initialPL * (1 - winDisc) : initialPL;
+      const winDiscAmount = applyWinDisc ? initialPL * winDisc : 0;
+      const tag = pl >= 0 ? "BANKER" : "AGENT";
+      return {
+        agentId,
+        agentName: g.agentName,
+        netGame,
+        rawWin: g.rawTotWin,
+        pl,
+        tag,
+        winDiscApplied: applyWinDisc,
+        winDiscAmount,
+        serial: agentMap[agentId]?.serial ?? 999,
+      };
+    })
+    .sort((a, b) => a.serial - b.serial);
   const grandGame = summaryRows.reduce((s, r) => s + r.netGame, 0);
   const grandWin = summaryRows.reduce((s, r) => s + r.rawWin, 0);
   const grandPL = summaryRows.reduce((s, r) => s + r.pl, 0);
@@ -242,7 +245,10 @@ export default function VisitorPage() {
         agentName.toLowerCase().includes(q) ||
         agentId.toLowerCase().includes(q),
     )
-    .sort(([aId], [bId]) => (agentMap[aId]?.serial ?? 999) - (agentMap[bId]?.serial ?? 999));
+    .sort(
+      ([aId], [bId]) =>
+        (agentMap[aId]?.serial ?? 999) - (agentMap[bId]?.serial ?? 999),
+    );
 
   const sth =
     "border border-gray-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-gray-500 bg-gray-50";
@@ -274,18 +280,24 @@ export default function VisitorPage() {
                 {summaryRows.map((r) => (
                   <tr key={r.agentId} className="hover:bg-gray-50">
                     <td className={`${std} font-medium`}>{r.agentName}</td>
-                    <td className={`${std} text-right font-mono`}>{fmt(r.netGame)}</td>
+                    <td className={`${std} text-right font-mono`}>
+                      {fmt(r.netGame)}
+                    </td>
                     <td className={`${std} text-right`}>
                       <div className="font-mono">{fmt(r.rawWin)}</div>
                       {r.winDiscApplied && r.winDiscAmount > 0 && (
-                        <div className="text-xs text-blue-500 font-mono">+{fmt(r.winDiscAmount)} W.disc</div>
+                        <div className="text-xs text-blue-500 font-mono">
+                          +{fmt(r.winDiscAmount)} W.disc
+                        </div>
                       )}
                     </td>
-                    <td className={`${std} text-right font-mono font-bold ${r.tag === "BANKER" ? "text-green-700" : "text-red-600"}`}>
+                    <td
+                      className={`${std} text-right font-mono font-bold ${r.tag === "BANKER" ? "text-green-700" : "text-red-600"}`}>
                       {fmt(Math.abs(r.pl))}
                     </td>
                     <td className={`${std} text-center`}>
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded ${r.tag === "BANKER" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+                      <span
+                        className={`text-xs font-bold px-2 py-0.5 rounded ${r.tag === "BANKER" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
                         {r.tag}
                       </span>
                     </td>
@@ -293,8 +305,12 @@ export default function VisitorPage() {
                 ))}
                 {expenseGame !== 0 && (
                   <tr className="hover:bg-gray-50">
-                    <td className={`${std} text-gray-400 italic`}>{expenseLabelGame}</td>
-                    <td className={`${std} text-right font-mono text-red-600`}>{fmt(expenseGame)}</td>
+                    <td className={`${std} text-gray-400 italic`}>
+                      {expenseLabelGame}
+                    </td>
+                    <td className={`${std} text-right font-mono text-red-600`}>
+                      {fmt(expenseGame)}
+                    </td>
                     <td className={`${std}`}></td>
                     <td className={`${std}`}></td>
                     <td className={`${std}`}></td>
@@ -302,9 +318,13 @@ export default function VisitorPage() {
                 )}
                 {expenseWin !== 0 && (
                   <tr className="hover:bg-gray-50">
-                    <td className={`${std} text-gray-400 italic`}>{expenseLabelWin}</td>
+                    <td className={`${std} text-gray-400 italic`}>
+                      {expenseLabelWin}
+                    </td>
                     <td className={`${std}`}></td>
-                    <td className={`${std} text-right font-mono text-red-600`}>{fmt(expenseWin)}</td>
+                    <td className={`${std} text-right font-mono text-red-600`}>
+                      {fmt(expenseWin)}
+                    </td>
                     <td className={`${std}`}></td>
                     <td className={`${std}`}></td>
                   </tr>
@@ -312,21 +332,33 @@ export default function VisitorPage() {
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-gray-400 bg-gray-50 font-bold">
-                  <td className={`${std} text-xs uppercase tracking-wider text-gray-500`}>Total</td>
-                  <td className={`${std} text-right font-mono`}>{fmt(totGameDisplay)}</td>
-                  <td className={`${std} text-right font-mono`}>{fmt(totWinDisplay)}</td>
-                  <td className={`${std} text-right font-mono font-bold ${adjustedGrandTag === "BANKER" ? "text-green-700" : "text-red-600"}`}>
+                  <td
+                    className={`${std} text-xs uppercase tracking-wider text-gray-500`}>
+                    Total
+                  </td>
+                  <td className={`${std} text-right font-mono`}>
+                    {fmt(totGameDisplay)}
+                  </td>
+                  <td className={`${std} text-right font-mono`}>
+                    {fmt(totWinDisplay)}
+                  </td>
+                  <td
+                    className={`${std} text-right font-mono font-bold ${adjustedGrandTag === "BANKER" ? "text-green-700" : "text-red-600"}`}>
                     {fmt(Math.abs(adjustedGrandPL))}
                   </td>
                   <td className={`${std} text-center`}>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded ${adjustedGrandTag === "BANKER" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+                    <span
+                      className={`text-xs font-bold px-2 py-0.5 rounded ${adjustedGrandTag === "BANKER" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
                       {adjustedGrandTag}
                     </span>
                   </td>
                 </tr>
                 <tr className="bg-gray-50">
-                  <td colSpan={5} className="border border-gray-300 px-3 py-1 text-xs text-gray-400 italic">
-                    P/L = {fmt(totGameDisplay)} &minus; {fmt(totWinDisplay)} = {fmt(Math.abs(adjustedGrandPL))} {adjustedGrandTag}
+                  <td
+                    colSpan={5}
+                    className="border border-gray-300 px-3 py-1 text-xs text-gray-400 italic">
+                    P/L = {fmt(totGameDisplay)} &minus; {fmt(totWinDisplay)} ={" "}
+                    {fmt(Math.abs(adjustedGrandPL))} {adjustedGrandTag}
                   </td>
                 </tr>
               </tfoot>
@@ -338,35 +370,43 @@ export default function VisitorPage() {
       {/* Accumulated P/L from previous cleared sessions */}
       {!loading && (previousPL !== 0 || summaryRows.length > 0) && (
         <div className="max-w-2xl mx-auto mb-6 bg-white border border-gray-200 rounded-xl p-4 space-y-2 text-black">
-          <div className="text-xs text-gray-500 uppercase tracking-wider mb-2">Accumulated P/L</div>
+          <div className="text-xs text-gray-500 uppercase tracking-wider mb-2">
+            Accumulated P/L
+          </div>
           {previousPL !== 0 && (
             <div className="flex justify-between items-center text-sm">
               <span className="text-gray-500">Previous Sessions</span>
-              <span className={`font-mono font-bold ${previousPL >= 0 ? "text-green-700" : "text-red-600"}`}>
-                {fmt(Math.abs(previousPL))} {previousPL >= 0 ? "BANKER" : "AGENT"}
+              <span
+                className={`font-mono font-bold ${previousPL >= 0 ? "text-green-700" : "text-red-600"}`}>
+                {fmt(Math.abs(previousPL))}{" "}
+                {previousPL >= 0 ? "BANKER" : "AGENT"}
               </span>
             </div>
           )}
           {summaryRows.length > 0 && (
             <div className="flex justify-between items-center text-sm">
               <span className="text-gray-500">Current Session</span>
-              <span className={`font-mono font-bold ${grandPL >= 0 ? "text-green-700" : "text-red-600"}`}>
+              <span
+                className={`font-mono font-bold ${grandPL >= 0 ? "text-green-700" : "text-red-600"}`}>
                 {fmt(Math.abs(grandPL))} {grandTag}
               </span>
             </div>
           )}
-          {previousPL !== 0 && summaryRows.length > 0 && (() => {
-            const combined = previousPL + grandPL;
-            const combinedTag = combined >= 0 ? "BANKER" : "AGENT";
-            return (
-              <div className="flex justify-between items-center pt-2 border-t border-gray-200 text-sm font-bold">
-                <span className="text-black">Grand Total</span>
-                <span className={`font-mono text-lg ${combined >= 0 ? "text-green-700" : "text-red-600"}`}>
-                  {fmt(Math.abs(combined))} {combinedTag}
-                </span>
-              </div>
-            );
-          })()}
+          {previousPL !== 0 &&
+            summaryRows.length > 0 &&
+            (() => {
+              const combined = previousPL + grandPL;
+              const combinedTag = combined >= 0 ? "BANKER" : "AGENT";
+              return (
+                <div className="flex justify-between items-center pt-2 border-t border-gray-200 text-sm font-bold">
+                  <span className="text-black">Grand Total</span>
+                  <span
+                    className={`font-mono text-lg ${combined >= 0 ? "text-green-700" : "text-red-600"}`}>
+                    {fmt(Math.abs(combined))} {combinedTag}
+                  </span>
+                </div>
+              );
+            })()}
         </div>
       )}
 
@@ -418,7 +458,11 @@ export default function VisitorPage() {
               agentName={agentName}
               rows={rows}
               agent={agentMap[agentId]}
-              gameNames={agentMap[agentId]?.showExtraGames ? gameNames : gameNames.slice(0, 12)}
+              gameNames={
+                agentMap[agentId]?.showExtraGames
+                  ? gameNames
+                  : gameNames.slice(0, 12)
+              }
             />
           ))}
         </div>
@@ -456,7 +500,9 @@ function AgentTable({ agentId, agentName, rows, agent, gameNames }) {
 
   const latestDate =
     rows.length > 0 && rows[0].createdAt
-      ? new Date(rows[0].createdAt).toLocaleDateString("en-GB", { timeZone: "Asia/Riyadh" })
+      ? new Date(rows[0].createdAt).toLocaleDateString("en-GB", {
+          timeZone: "Asia/Riyadh",
+        })
       : "";
 
   const N = gameNames.length;
@@ -593,10 +639,16 @@ function AgentTable({ agentId, agentName, rows, agent, gameNames }) {
                             </div>
                           </div>
                           <div className="border-t border-gray-300 pt-2">
-                            <div className="text-sm text-gray-400">Total Win</div>
-                            <div className="font-mono font-bold text-lg">{fmt(rawTotWin)}</div>
+                            <div className="text-sm text-gray-400">
+                              Total Win
+                            </div>
+                            <div className="font-mono font-bold text-lg">
+                              {fmt(rawTotWin)}
+                            </div>
                             {applyWinDisc && winDiscAmount > 0 && (
-                              <div className="text-xs text-blue-500 font-mono">+{fmt(winDiscAmount)} W.disc</div>
+                              <div className="text-xs text-blue-500 font-mono">
+                                +{fmt(winDiscAmount)} W.disc
+                              </div>
                             )}
                           </div>
                           <div className="border-t border-gray-300 pt-2">
