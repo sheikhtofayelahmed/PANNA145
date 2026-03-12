@@ -7,14 +7,16 @@ function fmt(n) {
 
 function printSummary(
   rows, grandGame, grandWin, grandPL, grandTag,
-  expense = 0, expenseLabel = "Expense",
+  expenseWin = 0, expenseLabelWin = "Expense (Win)",
+  expenseGame = 0, expenseLabelGame = "Expense (Game)",
   totalWinDisc = 0,
   adjustedGrandPL = null, adjustedGrandTag = null,
 ) {
   const date = new Date().toLocaleDateString("en-GB", { timeZone: "Asia/Riyadh" });
   const netPL = adjustedGrandPL ?? grandPL;
   const netTag = adjustedGrandTag ?? grandTag;
-  const totWin = grandWin + totalWinDisc + expense;
+  const totGame = grandGame + expenseGame;
+  const totWin = grandWin + totalWinDisc + expenseWin;
 
   const dataRows = rows
     .map((r) => {
@@ -35,12 +37,23 @@ function printSummary(
 
   const netColor = netTag === "BANKER" ? "#166534" : "#991b1b";
 
-  const expenseRow =
-    expense !== 0
+  const expenseGameRow =
+    expenseGame !== 0
       ? `<tr>
-      <td style="border:1px solid #999;padding:6px 10px;color:#666;font-style:italic;">${expenseLabel}</td>
+      <td style="border:1px solid #999;padding:6px 10px;color:#666;font-style:italic;">${expenseLabelGame}</td>
+      <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#991b1b;">${fmt(expenseGame)}</td>
       <td style="border:1px solid #999;padding:6px 10px;"></td>
-      <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#991b1b;">${fmt(expense)}</td>
+      <td style="border:1px solid #999;padding:6px 10px;"></td>
+      <td style="border:1px solid #999;padding:6px 10px;"></td>
+    </tr>`
+      : "";
+
+  const expenseWinRow =
+    expenseWin !== 0
+      ? `<tr>
+      <td style="border:1px solid #999;padding:6px 10px;color:#666;font-style:italic;">${expenseLabelWin}</td>
+      <td style="border:1px solid #999;padding:6px 10px;"></td>
+      <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#991b1b;">${fmt(expenseWin)}</td>
       <td style="border:1px solid #999;padding:6px 10px;"></td>
       <td style="border:1px solid #999;padding:6px 10px;"></td>
     </tr>`
@@ -76,18 +89,18 @@ function printSummary(
         <th style="text-align:center;">Tag</th>
       </tr>
     </thead>
-    <tbody>${dataRows}${expenseRow}</tbody>
+    <tbody>${dataRows}${expenseGameRow}${expenseWinRow}</tbody>
     <tfoot>
       <tr style="font-weight:bold;background:#f9fafb;border-top:2px solid #666;">
         <td>Total</td>
-        <td style="text-align:right;font-family:monospace;">${fmt(grandGame)}</td>
+        <td style="text-align:right;font-family:monospace;">${fmt(totGame)}</td>
         <td style="text-align:right;font-family:monospace;">${fmt(totWin)}</td>
         <td style="text-align:right;font-family:monospace;color:${netColor};">${fmt(Math.abs(netPL))}</td>
         <td style="text-align:center;color:${netColor};">${netTag}</td>
       </tr>
       <tr style="background:#f9fafb;">
         <td colspan="5" style="font-size:11px;color:#666;font-style:italic;border-top:none;">
-          P/L = ${fmt(grandGame)} &minus; ${fmt(totWin)} = ${fmt(Math.abs(netPL))} ${netTag}
+          P/L = ${fmt(totGame)} &minus; ${fmt(totWin)} = ${fmt(Math.abs(netPL))} ${netTag}
         </td>
       </tr>
     </tfoot>
@@ -111,11 +124,15 @@ export default function AdminHome() {
   const [previousPL, setPreviousPL] = useState(null);
   const [summaryHistory, setSummaryHistory] = useState([]);
   const [expandedHistory, setExpandedHistory] = useState(null);
-  const [expense, setExpense] = useState(0);
-  const [expenseLabel, setExpenseLabel] = useState("Expense");
+  const [expenseWin, setExpenseWin] = useState(0);
+  const [expenseLabelWin, setExpenseLabelWin] = useState("Expense (Win)");
+  const [expenseGame, setExpenseGame] = useState(0);
+  const [expenseLabelGame, setExpenseLabelGame] = useState("Expense (Game)");
   const [editingExpense, setEditingExpense] = useState(false);
-  const [expenseInput, setExpenseInput] = useState("");
-  const [expenseLabelInput, setExpenseLabelInput] = useState("");
+  const [expenseWinInput, setExpenseWinInput] = useState("");
+  const [expenseLabelWinInput, setExpenseLabelWinInput] = useState("");
+  const [expenseGameInput, setExpenseGameInput] = useState("");
+  const [expenseLabelGameInput, setExpenseLabelGameInput] = useState("");
   const tableRef = useRef(null);
 
   const CLEAR_KEYWORD = "CLEAR ALL";
@@ -149,8 +166,10 @@ export default function AdminHome() {
           grandWin,
           grandPL,
           grandTag,
-          expense,
-          expenseLabel,
+          expenseWin,
+          expenseLabelWin,
+          expenseGame,
+          expenseLabelGame,
           totalWinDisc,
           adjustedGrandPL,
           adjustedGrandTag,
@@ -166,7 +185,7 @@ export default function AdminHome() {
     await fetch("/api/expense", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount: 0, label: expenseLabel }),
+      body: JSON.stringify({ winAmount: 0, winLabel: expenseLabelWin, gameAmount: 0, gameLabel: expenseLabelGame }),
     });
     setPreviousPL((prev) => (prev ?? 0) + adjustedGrandPL);
     setSummaryHistory((prev) => [
@@ -174,14 +193,15 @@ export default function AdminHome() {
         date: saDate,
         rows: rows.map((r) => ({ ...r })),
         grandGame, grandWin, grandPL, grandTag,
-        expense, expenseLabel, totalWinDisc,
-        adjustedGrandPL, adjustedGrandTag,
+        expenseWin, expenseLabelWin, expenseGame, expenseLabelGame,
+        totalWinDisc, adjustedGrandPL, adjustedGrandTag,
         clearedAt: new Date().toISOString(),
       },
       ...prev,
     ]);
     setData([]);
-    setExpense(0);
+    setExpenseWin(0);
+    setExpenseGame(0);
     setClearing(false);
   }
 
@@ -203,8 +223,10 @@ export default function AdminHome() {
         setData(gameJson.data || []);
         setPreviousPL(histJson.totalPL ?? 0);
         setSummaryHistory(summaryJson.records || []);
-        setExpense(expenseJson.amount ?? 0);
-        setExpenseLabel(expenseJson.label || "Expense");
+        setExpenseWin(expenseJson.winAmount ?? 0);
+        setExpenseLabelWin(expenseJson.winLabel || "Expense (Win)");
+        setExpenseGame(expenseJson.gameAmount ?? 0);
+        setExpenseLabelGame(expenseJson.gameLabel || "Expense (Game)");
         const map = {};
         (agentJson.agents || []).forEach((a) => {
           map[a.agentId] = a;
@@ -262,8 +284,9 @@ export default function AdminHome() {
   const grandPL = rows.reduce((s, r) => s + r.pl, 0);
   const grandTag = grandPL >= 0 ? "BANKER" : "AGENT";
   const totalWinDisc = rows.reduce((s, r) => s + r.winDiscAmount, 0);
-  const totWinDisplay = grandWin + totalWinDisc + expense;
-  const adjustedGrandPL = grandPL - expense;
+  const totGameDisplay = grandGame + expenseGame;
+  const totWinDisplay = grandWin + totalWinDisc + expenseWin;
+  const adjustedGrandPL = grandPL + expenseGame - expenseWin;
   const adjustedGrandTag = adjustedGrandPL >= 0 ? "BANKER" : "AGENT";
 
   async function shareWhatsApp() {
@@ -286,12 +309,23 @@ export default function AdminHome() {
       })
       .join("");
 
-    const expenseRowHtml =
-      expense !== 0
+    const expenseGameRowHtml =
+      expenseGame !== 0
         ? `<tr>
-        <td style="border:1px solid #999;padding:6px 10px;color:#666;font-style:italic;">${expenseLabel}</td>
+        <td style="border:1px solid #999;padding:6px 10px;color:#666;font-style:italic;">${expenseLabelGame}</td>
+        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#991b1b;">${fmt(expenseGame)}</td>
         <td style="border:1px solid #999;padding:6px 10px;"></td>
-        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#991b1b;">${fmt(expense)}</td>
+        <td style="border:1px solid #999;padding:6px 10px;"></td>
+        <td style="border:1px solid #999;padding:6px 10px;"></td>
+      </tr>`
+        : "";
+
+    const expenseWinRowHtml =
+      expenseWin !== 0
+        ? `<tr>
+        <td style="border:1px solid #999;padding:6px 10px;color:#666;font-style:italic;">${expenseLabelWin}</td>
+        <td style="border:1px solid #999;padding:6px 10px;"></td>
+        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#991b1b;">${fmt(expenseWin)}</td>
         <td style="border:1px solid #999;padding:6px 10px;"></td>
         <td style="border:1px solid #999;padding:6px 10px;"></td>
       </tr>`
@@ -313,18 +347,18 @@ export default function AdminHome() {
             <th style="border:1px solid #999;padding:6px 10px;font-size:12px;text-align:center;text-transform:uppercase;letter-spacing:.05em;">Tag</th>
           </tr>
         </thead>
-        <tbody>${dataRows}${expenseRowHtml}</tbody>
+        <tbody>${dataRows}${expenseGameRowHtml}${expenseWinRowHtml}</tbody>
         <tfoot>
           <tr style="background:#f9fafb;border-top:2px solid #666;font-weight:bold;">
             <td style="border:1px solid #999;padding:6px 10px;">Total</td>
-            <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;">${fmt(grandGame)}</td>
+            <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;">${fmt(totGameDisplay)}</td>
             <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;">${fmt(totWinDisplay)}</td>
             <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:${netColor};">${fmt(Math.abs(adjustedGrandPL))}</td>
             <td style="border:1px solid #999;padding:6px 10px;text-align:center;color:${netColor};">${adjustedGrandTag}</td>
           </tr>
           <tr style="background:#f9fafb;">
             <td colspan="5" style="border:1px solid #999;padding:4px 10px;font-size:10px;color:#666;font-style:italic;">
-              P/L = ${fmt(grandGame)} &minus; ${fmt(totWinDisplay)} = ${fmt(Math.abs(adjustedGrandPL))} ${adjustedGrandTag}
+              P/L = ${fmt(totGameDisplay)} &minus; ${fmt(totWinDisplay)} = ${fmt(Math.abs(adjustedGrandPL))} ${adjustedGrandTag}
             </td>
           </tr>
         </tfoot>
@@ -377,7 +411,9 @@ export default function AdminHome() {
                 onClick={() =>
                   printSummary(
                     rows, grandGame, grandWin, grandPL, grandTag,
-                    expense, expenseLabel, totalWinDisc,
+                    expenseWin, expenseLabelWin,
+                    expenseGame, expenseLabelGame,
+                    totalWinDisc,
                     adjustedGrandPL, adjustedGrandTag,
                   )
                 }
@@ -387,10 +423,7 @@ export default function AdminHome() {
             </>
           )}
           <button
-            onClick={() => {
-              setClearText("");
-              setShowClearModal(true);
-            }}
+            onClick={() => { setClearText(""); setShowClearModal(true); }}
             disabled={clearing || rows.length === 0}
             className="px-4 py-1.5 text-xs bg-red-900 hover:bg-red-800 disabled:opacity-40 text-red-200 font-bold rounded-lg transition">
             {clearing ? "Clearing..." : "Clear All Data"}
@@ -442,11 +475,20 @@ export default function AdminHome() {
                     </td>
                   </tr>
                 ))}
-                {expense !== 0 && (
+                {expenseGame !== 0 && (
                   <tr className="hover:bg-gray-900/40">
-                    <td className={`${td} text-gray-400 italic`}>{expenseLabel}</td>
+                    <td className={`${td} text-gray-400 italic`}>{expenseLabelGame}</td>
+                    <td className={`${td} text-right font-mono text-red-400`}>{fmt(expenseGame)}</td>
                     <td className={`${td}`}></td>
-                    <td className={`${td} text-right font-mono text-red-400`}>{fmt(expense)}</td>
+                    <td className={`${td}`}></td>
+                    <td className={`${td}`}></td>
+                  </tr>
+                )}
+                {expenseWin !== 0 && (
+                  <tr className="hover:bg-gray-900/40">
+                    <td className={`${td} text-gray-400 italic`}>{expenseLabelWin}</td>
+                    <td className={`${td}`}></td>
+                    <td className={`${td} text-right font-mono text-red-400`}>{fmt(expenseWin)}</td>
                     <td className={`${td}`}></td>
                     <td className={`${td}`}></td>
                   </tr>
@@ -455,7 +497,7 @@ export default function AdminHome() {
               <tfoot>
                 <tr className="bg-gray-900 border-t-2 border-gray-600 font-bold">
                   <td className={`${td} text-xs uppercase tracking-wider text-gray-400`}>Total</td>
-                  <td className={`${td} text-right font-mono`}>{fmt(grandGame)}</td>
+                  <td className={`${td} text-right font-mono`}>{fmt(totGameDisplay)}</td>
                   <td className={`${td} text-right font-mono`}>{fmt(totWinDisplay)}</td>
                   <td className={`${td} text-right font-mono font-bold ${adjustedGrandTag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
                     {fmt(Math.abs(adjustedGrandPL))}
@@ -468,7 +510,7 @@ export default function AdminHome() {
                 </tr>
                 <tr className="bg-gray-900">
                   <td colSpan={5} className="border border-gray-700 px-3 py-1 text-xs text-gray-500 italic">
-                    P/L = {fmt(grandGame)} &minus; {fmt(totWinDisplay)} = {fmt(Math.abs(adjustedGrandPL))} {adjustedGrandTag}
+                    P/L = {fmt(totGameDisplay)} &minus; {fmt(totWinDisplay)} = {fmt(Math.abs(adjustedGrandPL))} {adjustedGrandTag}
                   </td>
                 </tr>
               </tfoot>
@@ -519,8 +561,10 @@ export default function AdminHome() {
           {!editingExpense && (
             <button
               onClick={() => {
-                setExpenseInput(String(expense));
-                setExpenseLabelInput(expenseLabel);
+                setExpenseWinInput(String(expenseWin));
+                setExpenseLabelWinInput(expenseLabelWin);
+                setExpenseGameInput(String(expenseGame));
+                setExpenseLabelGameInput(expenseLabelGame);
                 setEditingExpense(true);
               }}
               className="text-xs text-gray-400 hover:text-white border border-gray-700 rounded px-2 py-0.5 transition">
@@ -529,33 +573,58 @@ export default function AdminHome() {
           )}
         </div>
         {editingExpense ? (
-          <div className="space-y-2">
+          <div className="space-y-3">
+            <div className="text-xs text-gray-500 uppercase tracking-wide">Add to Game</div>
             <input
               type="text"
-              value={expenseLabelInput}
-              onChange={(e) => setExpenseLabelInput(e.target.value)}
-              placeholder="Label (e.g. Rent, Staff)"
+              value={expenseLabelGameInput}
+              onChange={(e) => setExpenseLabelGameInput(e.target.value)}
+              placeholder="Label"
               className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none"
             />
             <input
               type="number"
               min="0"
-              value={expenseInput}
-              onChange={(e) => setExpenseInput(e.target.value)}
+              value={expenseGameInput}
+              onChange={(e) => setExpenseGameInput(e.target.value)}
               placeholder="0"
               className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none"
             />
-            <div className="flex gap-2">
+            <div className="text-xs text-gray-500 uppercase tracking-wide pt-1">Add to Win</div>
+            <input
+              type="text"
+              value={expenseLabelWinInput}
+              onChange={(e) => setExpenseLabelWinInput(e.target.value)}
+              placeholder="Label"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none"
+            />
+            <input
+              type="number"
+              min="0"
+              value={expenseWinInput}
+              onChange={(e) => setExpenseWinInput(e.target.value)}
+              placeholder="0"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none"
+            />
+            <div className="flex gap-2 pt-1">
               <button
                 onClick={async () => {
-                  const amt = Number(expenseInput || 0);
+                  const wAmt = Number(expenseWinInput || 0);
+                  const gAmt = Number(expenseGameInput || 0);
                   await fetch("/api/expense", {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ amount: amt, label: expenseLabelInput || "Expense" }),
+                    body: JSON.stringify({
+                      winAmount: wAmt,
+                      winLabel: expenseLabelWinInput || "Expense (Win)",
+                      gameAmount: gAmt,
+                      gameLabel: expenseLabelGameInput || "Expense (Game)",
+                    }),
                   });
-                  setExpense(amt);
-                  setExpenseLabel(expenseLabelInput || "Expense");
+                  setExpenseWin(wAmt);
+                  setExpenseLabelWin(expenseLabelWinInput || "Expense (Win)");
+                  setExpenseGame(gAmt);
+                  setExpenseLabelGame(expenseLabelGameInput || "Expense (Game)");
                   setEditingExpense(false);
                 }}
                 className="flex-1 py-1.5 rounded-lg text-xs bg-white text-black font-bold hover:bg-gray-200 transition">
@@ -569,9 +638,17 @@ export default function AdminHome() {
             </div>
           </div>
         ) : (
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-400">{expenseLabel}</span>
-            <span className="font-mono font-bold text-red-400">{expense !== 0 ? `-${fmt(expense)}` : "—"}</span>
+          <div className="space-y-1 text-sm">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-500 text-xs">Game</span>
+              <span className="text-gray-400 italic text-xs">{expenseLabelGame}</span>
+              <span className="font-mono font-bold text-red-400">{expenseGame !== 0 ? `+${fmt(expenseGame)}` : "—"}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-500 text-xs">Win</span>
+              <span className="text-gray-400 italic text-xs">{expenseLabelWin}</span>
+              <span className="font-mono font-bold text-red-400">{expenseWin !== 0 ? `+${fmt(expenseWin)}` : "—"}</span>
+            </div>
           </div>
         )}
       </div>
@@ -600,7 +677,6 @@ export default function AdminHome() {
                       <span className="text-gray-600 text-xs">{isOpen ? "▲" : "▼"}</span>
                     </div>
                   </button>
-
                   {isOpen && (
                     <div className="border-t border-gray-800">
                       <div className="overflow-x-auto">
@@ -660,22 +736,18 @@ export default function AdminHome() {
         </div>
       )}
 
-      {/* Clear All confirmation modal */}
+      {/* Clear All modal */}
       {showClearModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
           <div className="bg-gray-900 border border-red-800 rounded-2xl p-6 w-full max-w-sm mx-4 space-y-4">
-            <h2 className="text-base font-bold text-red-400 uppercase tracking-wider">
-              Clear All Data
-            </h2>
+            <h2 className="text-base font-bold text-red-400 uppercase tracking-wider">Clear All Data</h2>
             <p className="text-sm text-gray-400">
               This will permanently delete{" "}
               <span className="text-white font-bold">all game entries</span> and reset expense to 0.
               This cannot be undone.
             </p>
             <p className="text-xs text-gray-500">
-              Type{" "}
-              <span className="text-red-300 font-mono font-bold">{CLEAR_KEYWORD}</span>{" "}
-              to confirm:
+              Type <span className="text-red-300 font-mono font-bold">{CLEAR_KEYWORD}</span> to confirm:
             </p>
             <input
               type="text"

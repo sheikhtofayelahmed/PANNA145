@@ -59,7 +59,7 @@ function printAgentTable({
     <div style="border-top:1px solid #ccc;padding-top:6px;">
       <div style="font-family:monospace;font-size:13px;color:#555;text-align:right;padding-right:2px;">${fmt(totNetGame)}</div>
       <div style="font-family:monospace;font-size:13px;color:#555;display:flex;justify-content:space-between;padding-right:2px;">
-        <span>&#8722;</span><span>${fmt(rawTotWin)}</span>
+        <span>&#8722;</span><span>${fmt(rawTotWin + winDiscAmount)}</span>
       </div>
       <div style="border-top:2px solid #333;margin-top:4px;padding-top:5px;text-align:center;">
         <div style="font-weight:900;font-size:20px;color:${plColor};">${fmt(Math.abs(totPL))}</div>
@@ -135,8 +135,10 @@ export default function VisitorPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [previousPL, setPreviousPL] = useState(0);
-  const [expense, setExpense] = useState(0);
-  const [expenseLabel, setExpenseLabel] = useState("Expense");
+  const [expenseWin, setExpenseWin] = useState(0);
+  const [expenseLabelWin, setExpenseLabelWin] = useState("Expense (Win)");
+  const [expenseGame, setExpenseGame] = useState(0);
+  const [expenseLabelGame, setExpenseLabelGame] = useState("Expense (Game)");
 
   async function load() {
     try {
@@ -155,8 +157,10 @@ export default function VisitorPage() {
       const expenseJson = await expenseRes.json();
       setData(gameJson.data || []);
       setPreviousPL(histJson.totalPL ?? 0);
-      setExpense(expenseJson.amount ?? 0);
-      setExpenseLabel(expenseJson.label || "Expense");
+      setExpenseWin(expenseJson.winAmount ?? 0);
+      setExpenseLabelWin(expenseJson.winLabel || "Expense (Win)");
+      setExpenseGame(expenseJson.gameAmount ?? 0);
+      setExpenseLabelGame(expenseJson.gameLabel || "Expense (Game)");
       const map = {};
       (agentJson.agents || []).forEach((a) => {
         map[a.agentId] = a;
@@ -228,8 +232,9 @@ export default function VisitorPage() {
   const grandPL = summaryRows.reduce((s, r) => s + r.pl, 0);
   const grandTag = grandPL >= 0 ? "BANKER" : "AGENT";
   const totalWinDisc = summaryRows.reduce((s, r) => s + r.winDiscAmount, 0);
-  const totWinDisplay = grandWin + totalWinDisc + expense;
-  const adjustedGrandPL = grandPL - expense;
+  const totGameDisplay = grandGame + expenseGame;
+  const totWinDisplay = grandWin + totalWinDisc + expenseWin;
+  const adjustedGrandPL = grandPL + expenseGame - expenseWin;
   const adjustedGrandTag = adjustedGrandPL >= 0 ? "BANKER" : "AGENT";
 
   const q = search.trim().toLowerCase();
@@ -302,11 +307,20 @@ export default function VisitorPage() {
                     </td>
                   </tr>
                 ))}
-                {expense !== 0 && (
+                {expenseGame !== 0 && (
                   <tr className="hover:bg-gray-50">
-                    <td className={`${std} text-gray-400 italic`}>{expenseLabel}</td>
+                    <td className={`${std} text-gray-400 italic`}>{expenseLabelGame}</td>
+                    <td className={`${std} text-right font-mono text-red-600`}>{fmt(expenseGame)}</td>
                     <td className={`${std}`}></td>
-                    <td className={`${std} text-right font-mono text-red-600`}>{fmt(expense)}</td>
+                    <td className={`${std}`}></td>
+                    <td className={`${std}`}></td>
+                  </tr>
+                )}
+                {expenseWin !== 0 && (
+                  <tr className="hover:bg-gray-50">
+                    <td className={`${std} text-gray-400 italic`}>{expenseLabelWin}</td>
+                    <td className={`${std}`}></td>
+                    <td className={`${std} text-right font-mono text-red-600`}>{fmt(expenseWin)}</td>
                     <td className={`${std}`}></td>
                     <td className={`${std}`}></td>
                   </tr>
@@ -319,7 +333,7 @@ export default function VisitorPage() {
                     Total
                   </td>
                   <td className={`${std} text-right font-mono`}>
-                    {fmt(grandGame)}
+                    {fmt(totGameDisplay)}
                   </td>
                   <td className={`${std} text-right font-mono`}>
                     {fmt(totWinDisplay)}
@@ -337,7 +351,7 @@ export default function VisitorPage() {
                 </tr>
                 <tr className="bg-gray-50">
                   <td colSpan={5} className="border border-gray-300 px-3 py-1 text-xs text-gray-400 italic">
-                    P/L = {fmt(grandGame)} &minus; {fmt(totWinDisplay)} = {fmt(Math.abs(adjustedGrandPL))} {adjustedGrandTag}
+                    P/L = {fmt(totGameDisplay)} &minus; {fmt(totWinDisplay)} = {fmt(Math.abs(adjustedGrandPL))} {adjustedGrandTag}
                   </td>
                 </tr>
               </tfoot>
@@ -636,7 +650,7 @@ function AgentTable({ agentId, agentName, rows, agent, gameNames }) {
                             </div>
                             <div className="font-mono text-base text-gray-500 flex justify-between pr-0.5">
                               <span>−</span>
-                              <span>{fmt(rawTotWin)}</span>
+                              <span>{fmt(rawTotWin + winDiscAmount)}</span>
                             </div>
                             <div className="border-t-2 border-gray-700 mt-1 pt-1.5 text-center">
                               <div
