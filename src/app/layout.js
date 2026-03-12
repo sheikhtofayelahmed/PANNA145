@@ -33,6 +33,10 @@ export default function RootLayout({ children }) {
           <Link href="/admin" className="text-xs px-4 py-1.5 rounded-full text-gray-400 hover:bg-gray-800 hover:text-white transition font-medium tracking-wide">
             Admin
           </Link>
+          <span className="text-gray-700">|</span>
+          <Link href="/calculator" className="text-xs px-4 py-1.5 rounded-full text-gray-400 hover:bg-gray-800 hover:text-white transition font-medium tracking-wide">
+            Calc
+          </Link>
         </nav>
         {children}
         <script dangerouslySetInnerHTML={{
