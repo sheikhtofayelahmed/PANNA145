@@ -8,26 +8,22 @@ export default async function handler(req, res) {
   if (req.method === "GET") {
     const doc = await col.findOne({});
     return res.status(200).json({
-      winAmount: doc?.winAmount ?? 0,
-      winLabel: doc?.winLabel || "Expense (-)",
-      gameAmount: doc?.gameAmount ?? 0,
-      gameLabel: doc?.gameLabel || "Expense (+)",
+      amount: doc?.amount ?? 0,
+      label: doc?.label || "Expense",
     });
   }
 
   if (req.method === "PUT") {
-    const { winAmount, winLabel, gameAmount, gameLabel } = req.body;
+    const { amount, label } = req.body;
     await col.updateOne(
       {},
       {
         $set: {
-          winAmount: Number(winAmount ?? 0),
-          winLabel: winLabel || "Expense (-)",
-          gameAmount: Number(gameAmount ?? 0),
-          gameLabel: gameLabel || "Expense (+)",
+          amount: Number(amount ?? 0),
+          label: label || "Expense",
         },
       },
-      { upsert: true },
+      { upsert: true }
     );
     return res.status(200).json({ message: "Updated" });
   }
