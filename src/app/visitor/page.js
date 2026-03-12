@@ -135,8 +135,10 @@ export default function VisitorPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [previousPL, setPreviousPL] = useState(0);
-  const [expense, setExpense] = useState(0);
-  const [expenseLabel, setExpenseLabel] = useState("Expense");
+  const [expenseWin, setExpenseWin] = useState(0);
+  const [expenseLabelWin, setExpenseLabelWin] = useState("Expense (Win)");
+  const [expenseGame, setExpenseGame] = useState(0);
+  const [expenseLabelGame, setExpenseLabelGame] = useState("Expense (Game)");
 
   async function load() {
     try {
@@ -154,8 +156,10 @@ export default function VisitorPage() {
       const expenseJson = await expenseRes.json();
       setData(gameJson.data || []);
       setPreviousPL(histJson.totalPL ?? 0);
-      setExpense(expenseJson.amount ?? 0);
-      setExpenseLabel(expenseJson.label || "Expense");
+      setExpenseWin(expenseJson.winAmount ?? 0);
+      setExpenseLabelWin(expenseJson.winLabel || "Expense (Win)");
+      setExpenseGame(expenseJson.gameAmount ?? 0);
+      setExpenseLabelGame(expenseJson.gameLabel || "Expense (Game)");
       const map = {};
       (agentJson.agents || []).forEach((a) => {
         map[a.agentId] = a;
@@ -224,8 +228,11 @@ export default function VisitorPage() {
   const grandWin = summaryRows.reduce((s, r) => s + r.rawWin, 0);
   const grandPL = summaryRows.reduce((s, r) => s + r.pl, 0);
   const grandTag = grandPL >= 0 ? "BANKER" : "AGENT";
-  const adjustedGrandPL = grandPL - expense;
+  const totalWinDisc = summaryRows.reduce((s, r) => s + r.winDiscAmount, 0);
+  const adjustedGrandPL = grandPL + expenseGame - expenseWin;
   const adjustedGrandTag = adjustedGrandPL >= 0 ? "BANKER" : "AGENT";
+  const totGameDisplay = grandGame + expenseGame;
+  const totWinDisplay = grandWin + totalWinDisc + expenseWin;
 
   const q = search.trim().toLowerCase();
   const filteredEntries = Object.entries(groups)
@@ -284,11 +291,20 @@ export default function VisitorPage() {
                     </td>
                   </tr>
                 ))}
-                {expense !== 0 && (
+                {expenseGame !== 0 && (
                   <tr className="hover:bg-gray-50">
-                    <td className={`${std} text-gray-400 italic`}>{expenseLabel}</td>
+                    <td className={`${std} text-gray-400 italic`}>{expenseLabelGame}</td>
+                    <td className={`${std} text-right font-mono text-red-600`}>{fmt(expenseGame)}</td>
                     <td className={`${std}`}></td>
-                    <td className={`${std} text-right font-mono text-red-600`}>{fmt(expense)}</td>
+                    <td className={`${std}`}></td>
+                    <td className={`${std}`}></td>
+                  </tr>
+                )}
+                {expenseWin !== 0 && (
+                  <tr className="hover:bg-gray-50">
+                    <td className={`${std} text-gray-400 italic`}>{expenseLabelWin}</td>
+                    <td className={`${std}`}></td>
+                    <td className={`${std} text-right font-mono text-red-600`}>{fmt(expenseWin)}</td>
                     <td className={`${std}`}></td>
                     <td className={`${std}`}></td>
                   </tr>
@@ -297,8 +313,8 @@ export default function VisitorPage() {
               <tfoot>
                 <tr className="border-t-2 border-gray-400 bg-gray-50 font-bold">
                   <td className={`${std} text-xs uppercase tracking-wider text-gray-500`}>Total</td>
-                  <td className={`${std} text-right font-mono`}>{fmt(grandGame)}</td>
-                  <td className={`${std} text-right font-mono`}>{fmt(grandWin + expense)}</td>
+                  <td className={`${std} text-right font-mono`}>{fmt(totGameDisplay)}</td>
+                  <td className={`${std} text-right font-mono`}>{fmt(totWinDisplay)}</td>
                   <td className={`${std} text-right font-mono font-bold ${adjustedGrandTag === "BANKER" ? "text-green-700" : "text-red-600"}`}>
                     {fmt(Math.abs(adjustedGrandPL))}
                   </td>
@@ -306,6 +322,11 @@ export default function VisitorPage() {
                     <span className={`text-xs font-bold px-2 py-0.5 rounded ${adjustedGrandTag === "BANKER" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
                       {adjustedGrandTag}
                     </span>
+                  </td>
+                </tr>
+                <tr className="bg-gray-50">
+                  <td colSpan={5} className="border border-gray-300 px-3 py-1 text-xs text-gray-400 italic">
+                    P/L = {fmt(totGameDisplay)} &minus; {fmt(totWinDisplay)} = {fmt(Math.abs(adjustedGrandPL))} {adjustedGrandTag}
                   </td>
                 </tr>
               </tfoot>
