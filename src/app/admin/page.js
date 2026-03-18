@@ -675,7 +675,8 @@ export default function AdminHome() {
           <div className="space-y-2">
             {summaryHistory.map((snap, i) => {
               const isOpen = expandedHistory === i;
-              const snapTag = snap.grandPL >= 0 ? "BANKER" : "AGENT";
+              const snapFinalPL = snap.adjustedGrandPL ?? snap.grandPL;
+              const snapTag = snapFinalPL >= 0 ? "BANKER" : "AGENT";
               return (
                 <div key={i} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
                   <button
@@ -686,8 +687,8 @@ export default function AdminHome() {
                       <span className="text-xs text-gray-500">{snap.rows?.length || 0} agents</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className={`font-mono font-bold text-sm ${snap.grandPL >= 0 ? "text-green-400" : "text-red-400"}`}>
-                        {fmt(Math.abs(snap.grandPL))} {snapTag}
+                      <span className={`font-mono font-bold text-sm ${snapFinalPL >= 0 ? "text-green-400" : "text-red-400"}`}>
+                        {fmt(Math.abs(snapFinalPL))} {snapTag}
                       </span>
                       <span className="text-gray-600 text-xs">{isOpen ? "▲" : "▼"}</span>
                     </div>
@@ -728,10 +729,10 @@ export default function AdminHome() {
                           <tfoot>
                             <tr className="bg-gray-800 border-t-2 border-gray-600 font-bold">
                               <td className={`${td} text-xs uppercase tracking-wider text-gray-400`}>Total</td>
-                              <td className={`${td} text-right font-mono`}>{fmt(snap.grandGame)}</td>
-                              <td className={`${td} text-right font-mono`}>{fmt(snap.grandWin)}</td>
+                              <td className={`${td} text-right font-mono`}>{fmt((snap.grandGame ?? 0) + (snap.expenseGame ?? 0))}</td>
+                              <td className={`${td} text-right font-mono`}>{fmt((snap.grandWin ?? 0) + (snap.totalWinDisc ?? 0) + (snap.expenseWin ?? 0))}</td>
                               <td className={`${td} text-right font-mono font-bold ${snapTag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
-                                {fmt(Math.abs(snap.grandPL))}
+                                {fmt(Math.abs(snapFinalPL))}
                               </td>
                               <td className={`${td} text-center`}>
                                 <span className={`text-xs font-bold px-2 py-0.5 rounded ${snapTag === "BANKER" ? "bg-green-900/50 text-green-400" : "bg-red-900/50 text-red-400"}`}>

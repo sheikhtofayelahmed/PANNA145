@@ -11,7 +11,11 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "POST") {
-    const { date, rows, grandGame, grandWin, grandPL, grandTag } = req.body;
+    const {
+      date, rows, grandGame, grandWin, grandPL, grandTag,
+      expenseWin, expenseLabelWin, expenseGame, expenseLabelGame,
+      totalWinDisc, adjustedGrandPL, adjustedGrandTag,
+    } = req.body;
     if (!rows) return res.status(400).json({ error: "rows required" });
     await col.insertOne({
       date,
@@ -20,6 +24,13 @@ export default async function handler(req, res) {
       grandWin,
       grandPL,
       grandTag,
+      expenseWin: expenseWin ?? 0,
+      expenseLabelWin: expenseLabelWin || "Expense (Win)",
+      expenseGame: expenseGame ?? 0,
+      expenseLabelGame: expenseLabelGame || "Expense (Game)",
+      totalWinDisc: totalWinDisc ?? 0,
+      adjustedGrandPL: adjustedGrandPL ?? grandPL,
+      adjustedGrandTag: adjustedGrandTag ?? grandTag,
       clearedAt: new Date(),
     });
     return res.status(201).json({ message: "Saved" });
