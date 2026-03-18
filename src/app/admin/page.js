@@ -21,9 +21,10 @@ function printSummary(
   const dataRows = rows
     .map((r, i) => {
       const plColor = r.tag === "BANKER" ? "#166534" : "#991b1b";
+      const combinedWin = r.rawWin + (r.winDiscAmount || 0);
       const winCell =
         r.winDiscApplied && r.winDiscAmount > 0
-          ? `<div style="font-family:monospace;">${fmt(r.rawWin)}</div><div style="font-size:10px;color:#1d4ed8;">+${fmt(r.winDiscAmount)} W.disc</div>`
+          ? `<div style="font-family:monospace;">${fmt(combinedWin)}</div><div style="font-size:10px;color:#1d4ed8;">W.disc</div>`
           : `<div style="font-family:monospace;">${fmt(r.rawWin)}</div>`;
       return `<tr>
       <td style="border:1px solid #999;padding:6px 10px;text-align:center;color:#888;">${i + 1}</td>
@@ -300,9 +301,10 @@ export default function AdminHome() {
     const dataRows = rows
       .map((r, i) => {
         const plColor = r.tag === "BANKER" ? "#166534" : "#991b1b";
+        const combinedWin = r.rawWin + (r.winDiscAmount || 0);
         const winCell =
           r.winDiscApplied && r.winDiscAmount > 0
-            ? `<div style="font-family:monospace;">${fmt(r.rawWin)}</div><div style="font-size:10px;color:#1d4ed8;">+${fmt(r.winDiscAmount)} W.disc</div>`
+            ? `<div style="font-family:monospace;">${fmt(combinedWin)}</div><div style="font-size:10px;color:#1d4ed8;">W.disc</div>`
             : `<div style="font-family:monospace;">${fmt(r.rawWin)}</div>`;
         return `<tr>
         <td style="border:1px solid #999;padding:6px 10px;text-align:center;color:#888;">${i + 1}</td>
@@ -470,11 +472,9 @@ export default function AdminHome() {
                     <td className={`${td} font-medium`}>{r.agentName}</td>
                     <td className={`${td} text-right font-mono`}>{fmt(r.netGame)}</td>
                     <td className={`${td} text-right`}>
-                      <div className="font-mono">{fmt(r.rawWin)}</div>
+                      <div className="font-mono">{fmt(r.rawWin + (r.winDiscAmount || 0))}</div>
                       {r.winDiscApplied && r.winDiscAmount > 0 && (
-                        <div className="text-xs text-blue-400 font-mono">
-                          +{fmt(r.winDiscAmount)} W.disc
-                        </div>
+                        <div className="text-xs text-blue-400">W.disc</div>
                       )}
                     </td>
                     <td className={`${td} text-right font-mono font-bold ${r.tag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
@@ -549,13 +549,13 @@ export default function AdminHome() {
           {rows.length > 0 && (
             <div className="flex justify-between items-center text-sm">
               <span className="text-gray-400">Current Session</span>
-              <span className={`font-mono font-bold ${grandPL >= 0 ? "text-green-400" : "text-red-400"}`}>
-                {fmt(Math.abs(grandPL))} {grandTag}
+              <span className={`font-mono font-bold ${adjustedGrandPL >= 0 ? "text-green-400" : "text-red-400"}`}>
+                {fmt(Math.abs(adjustedGrandPL))} {adjustedGrandTag}
               </span>
             </div>
           )}
           {previousPL !== 0 && rows.length > 0 && (() => {
-            const combined = previousPL + grandPL;
+            const combined = previousPL + adjustedGrandPL;
             const combinedTag = combined >= 0 ? "BANKER" : "AGENT";
             return (
               <div className="flex justify-between items-center pt-2 border-t border-gray-700 text-sm font-bold">
@@ -696,9 +696,10 @@ export default function AdminHome() {
                   {isOpen && (
                     <div className="border-t border-gray-800">
                       <div className="overflow-x-auto">
-                        <table className="w-full border-collapse" style={{ minWidth: "380px" }}>
+                        <table className="w-full border-collapse" style={{ minWidth: "420px" }}>
                           <thead>
                             <tr className="bg-gray-800">
+                              <th className={`${th} text-center w-8`}>#</th>
                               <th className={`${th} text-left`}>Agent</th>
                               <th className={`${th} text-right`}>Total Game</th>
                               <th className={`${th} text-right`}>Total Win</th>
@@ -709,14 +710,19 @@ export default function AdminHome() {
                           <tbody>
                             {(snap.rows || []).map((r, j) => (
                               <tr key={j} className="hover:bg-gray-900/40">
+                                <td className={`${td} text-center text-gray-500 text-xs`}>{j + 1}</td>
                                 <td className={`${td} font-medium`}>{r.agentName}</td>
                                 <td className={`${td} text-right font-mono`}>{fmt(r.netGame)}</td>
-                                <td className={`${td} text-right font-mono`}>{fmt(r.rawWin)}</td>
+                                <td className={`${td} text-right`}>
+                                  <div className="font-mono">{fmt(r.rawWin + (r.winDiscAmount || 0))}</div>
+                                  {r.winDiscApplied && r.winDiscAmount > 0 && (
+                                    <div className="text-xs text-blue-400">W.disc</div>
+                                  )}
+                                </td>
                                 <td className={`${td} text-right`}>
                                   <div className={`font-mono font-bold ${r.tag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
                                     {fmt(Math.abs(r.pl))}
                                   </div>
-                                  {r.winDiscApplied && <div className="text-xs text-blue-400">W.disc</div>}
                                 </td>
                                 <td className={`${td} text-center`}>
                                   <span className={`text-xs font-bold px-2 py-0.5 rounded ${r.tag === "BANKER" ? "bg-green-900/50 text-green-400" : "bg-red-900/50 text-red-400"}`}>
@@ -725,9 +731,30 @@ export default function AdminHome() {
                                 </td>
                               </tr>
                             ))}
+                            {(snap.expenseGame ?? 0) !== 0 && (
+                              <tr className="hover:bg-gray-900/40">
+                                <td className={`${td}`}></td>
+                                <td className={`${td} text-gray-400 italic`}>{snap.expenseLabelGame || "Expense (Game)"}</td>
+                                <td className={`${td} text-right font-mono text-red-400`}>{fmt(snap.expenseGame)}</td>
+                                <td className={`${td}`}></td>
+                                <td className={`${td}`}></td>
+                                <td className={`${td}`}></td>
+                              </tr>
+                            )}
+                            {(snap.expenseWin ?? 0) !== 0 && (
+                              <tr className="hover:bg-gray-900/40">
+                                <td className={`${td}`}></td>
+                                <td className={`${td} text-gray-400 italic`}>{snap.expenseLabelWin || "Expense (Win)"}</td>
+                                <td className={`${td}`}></td>
+                                <td className={`${td} text-right font-mono text-red-400`}>{fmt(snap.expenseWin)}</td>
+                                <td className={`${td}`}></td>
+                                <td className={`${td}`}></td>
+                              </tr>
+                            )}
                           </tbody>
                           <tfoot>
                             <tr className="bg-gray-800 border-t-2 border-gray-600 font-bold">
+                              <td className={`${td}`}></td>
                               <td className={`${td} text-xs uppercase tracking-wider text-gray-400`}>Total</td>
                               <td className={`${td} text-right font-mono`}>{fmt((snap.grandGame ?? 0) + (snap.expenseGame ?? 0))}</td>
                               <td className={`${td} text-right font-mono`}>{fmt((snap.grandWin ?? 0) + (snap.totalWinDisc ?? 0) + (snap.expenseWin ?? 0))}</td>
@@ -738,6 +765,11 @@ export default function AdminHome() {
                                 <span className={`text-xs font-bold px-2 py-0.5 rounded ${snapTag === "BANKER" ? "bg-green-900/50 text-green-400" : "bg-red-900/50 text-red-400"}`}>
                                   {snapTag}
                                 </span>
+                              </td>
+                            </tr>
+                            <tr className="bg-gray-800">
+                              <td colSpan={6} className="border border-gray-700 px-3 py-1 text-xs text-gray-500 italic">
+                                P/L = {fmt((snap.grandGame ?? 0) + (snap.expenseGame ?? 0))} &minus; {fmt((snap.grandWin ?? 0) + (snap.totalWinDisc ?? 0) + (snap.expenseWin ?? 0))} = {fmt(Math.abs(snapFinalPL))} {snapTag}
                               </td>
                             </tr>
                           </tfoot>
