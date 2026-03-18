@@ -128,6 +128,118 @@ function printAgentTable({
   w.document.close();
 }
 
+function printSummary(
+  rows, grandGame, grandWin, grandPL, grandTag,
+  expenseWin = 0, expenseLabelWin = "Expense (Win)",
+  expenseGame = 0, expenseLabelGame = "Expense (Game)",
+  totalWinDisc = 0,
+  adjustedGrandPL = null, adjustedGrandTag = null,
+) {
+  const date = new Date().toLocaleDateString("en-GB", { timeZone: "Asia/Riyadh" });
+  const netPL = adjustedGrandPL ?? grandPL;
+  const netTag = adjustedGrandTag ?? grandTag;
+  const totGame = grandGame + expenseGame;
+  const totWin = grandWin + totalWinDisc + expenseWin;
+  const netColor = netTag === "BANKER" ? "#166534" : "#991b1b";
+
+  const dataRows = rows
+    .map((r, i) => {
+      const plColor = r.tag === "BANKER" ? "#166534" : "#991b1b";
+      const combinedWin = r.rawWin + (r.winDiscAmount || 0);
+      const winCell =
+        r.winDiscApplied && r.winDiscAmount > 0
+          ? `<div style="font-family:monospace;">${fmt(combinedWin)}</div><div style="font-size:10px;color:#1d4ed8;">W.disc</div>`
+          : `<div style="font-family:monospace;">${fmt(r.rawWin)}</div>`;
+      return `<tr>
+      <td style="border:1px solid #999;padding:6px 10px;text-align:center;color:#888;">${i + 1}</td>
+      <td style="border:1px solid #999;padding:6px 10px;">${r.agentName}</td>
+      <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;">${fmt(r.netGame)}</td>
+      <td style="border:1px solid #999;padding:6px 10px;text-align:right;">${winCell}</td>
+      <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;font-weight:bold;color:${plColor};">${fmt(Math.abs(r.pl))}</td>
+      <td style="border:1px solid #999;padding:6px 10px;text-align:center;font-weight:bold;color:${plColor};">${r.tag}</td>
+    </tr>`;
+    })
+    .join("");
+
+  const expenseGameRow =
+    expenseGame !== 0
+      ? `<tr>
+      <td style="border:1px solid #999;padding:6px 10px;"></td>
+      <td style="border:1px solid #999;padding:6px 10px;color:#666;font-style:italic;">${expenseLabelGame}</td>
+      <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#991b1b;">${fmt(expenseGame)}</td>
+      <td style="border:1px solid #999;padding:6px 10px;"></td>
+      <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;font-weight:bold;color:#166534;">+${fmt(expenseGame)}</td>
+      <td style="border:1px solid #999;padding:6px 10px;"></td>
+    </tr>` : "";
+
+  const expenseWinRow =
+    expenseWin !== 0
+      ? `<tr>
+      <td style="border:1px solid #999;padding:6px 10px;"></td>
+      <td style="border:1px solid #999;padding:6px 10px;color:#666;font-style:italic;">${expenseLabelWin}</td>
+      <td style="border:1px solid #999;padding:6px 10px;"></td>
+      <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#991b1b;">${fmt(expenseWin)}</td>
+      <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;font-weight:bold;color:#991b1b;">&#8722;${fmt(expenseWin)}</td>
+      <td style="border:1px solid #999;padding:6px 10px;"></td>
+    </tr>` : "";
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Summary - ${date}</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; color: #000; }
+    h2 { margin: 0 0 4px 0; font-size: 16px; }
+    .date { font-size: 12px; color: #666; margin-bottom: 14px; }
+    table { border-collapse: collapse; width: 100%; }
+    th { background: #f3f4f6; border: 1px solid #999; padding: 6px 10px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+    td { border: 1px solid #999; padding: 6px 10px; font-size: 13px; }
+    tfoot td { font-weight: bold; background: #f9fafb; border-top: 2px solid #666; }
+    @media print { button { display: none; } }
+  </style>
+</head>
+<body>
+  <button onclick="window.print()" style="margin-bottom:12px;padding:6px 14px;cursor:pointer;">Print</button>
+  <h2>Game Summary</h2>
+  <div class="date">${date}</div>
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align:center;width:32px;">#</th>
+        <th style="text-align:left;">Agent</th>
+        <th style="text-align:right;">Total Game</th>
+        <th style="text-align:right;">Total Win</th>
+        <th style="text-align:right;">P / L</th>
+        <th style="text-align:center;">Tag</th>
+      </tr>
+    </thead>
+    <tbody>${dataRows}${expenseGameRow}${expenseWinRow}</tbody>
+    <tfoot>
+      <tr>
+        <td></td>
+        <td>Total</td>
+        <td style="text-align:right;font-family:monospace;">${fmt(totGame)}</td>
+        <td style="text-align:right;font-family:monospace;">${fmt(totWin)}</td>
+        <td style="text-align:right;font-family:monospace;color:${netColor};">${fmt(Math.abs(netPL))}</td>
+        <td style="text-align:center;color:${netColor};">${netTag}</td>
+      </tr>
+      <tr>
+        <td colspan="6" style="font-size:11px;color:#666;font-style:italic;border-top:none;">
+          P/L = ${fmt(totGame)} &minus; ${fmt(totWin)} = ${fmt(Math.abs(netPL))} ${netTag}
+        </td>
+      </tr>
+    </tfoot>
+  </table>
+  <script>window.onload = () => window.print();<\/script>
+</body>
+</html>`;
+
+  const w = window.open("", "_blank");
+  w.document.write(html);
+  w.document.close();
+}
+
 export default function VisitorPage() {
   const [data, setData] = useState([]);
   const [agentMap, setAgentMap] = useState({});
@@ -237,6 +349,110 @@ export default function VisitorPage() {
   const adjustedGrandPL = grandPL + expenseGame - expenseWin;
   const adjustedGrandTag = adjustedGrandPL >= 0 ? "BANKER" : "AGENT";
 
+  async function shareWhatsApp() {
+    const date = new Date().toLocaleDateString("en-GB", { timeZone: "Asia/Riyadh" });
+    const netColor = adjustedGrandTag === "BANKER" ? "#166534" : "#991b1b";
+    const dataRows = summaryRows
+      .map((r, i) => {
+        const plColor = r.tag === "BANKER" ? "#166534" : "#991b1b";
+        const combinedWin = r.rawWin + (r.winDiscAmount || 0);
+        const winCell =
+          r.winDiscApplied && r.winDiscAmount > 0
+            ? `<div style="font-family:monospace;">${fmt(combinedWin)}</div><div style="font-size:10px;color:#1d4ed8;">W.disc</div>`
+            : `<div style="font-family:monospace;">${fmt(r.rawWin)}</div>`;
+        return `<tr>
+        <td style="border:1px solid #999;padding:6px 10px;text-align:center;color:#888;">${i + 1}</td>
+        <td style="border:1px solid #999;padding:6px 10px;">${r.agentName}</td>
+        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;">${fmt(r.netGame)}</td>
+        <td style="border:1px solid #999;padding:6px 10px;text-align:right;">${winCell}</td>
+        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;font-weight:bold;color:${plColor};">${fmt(Math.abs(r.pl))}</td>
+        <td style="border:1px solid #999;padding:6px 10px;text-align:center;font-weight:bold;color:${plColor};">${r.tag}</td>
+      </tr>`;
+      })
+      .join("");
+
+    const expenseGameRowHtml =
+      expenseGame !== 0
+        ? `<tr>
+        <td style="border:1px solid #999;padding:6px 10px;"></td>
+        <td style="border:1px solid #999;padding:6px 10px;color:#666;font-style:italic;">${expenseLabelGame}</td>
+        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#991b1b;">${fmt(expenseGame)}</td>
+        <td style="border:1px solid #999;padding:6px 10px;"></td>
+        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;font-weight:bold;color:#166534;">+${fmt(expenseGame)}</td>
+        <td style="border:1px solid #999;padding:6px 10px;"></td>
+      </tr>` : "";
+
+    const expenseWinRowHtml =
+      expenseWin !== 0
+        ? `<tr>
+        <td style="border:1px solid #999;padding:6px 10px;"></td>
+        <td style="border:1px solid #999;padding:6px 10px;color:#666;font-style:italic;">${expenseLabelWin}</td>
+        <td style="border:1px solid #999;padding:6px 10px;"></td>
+        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#991b1b;">${fmt(expenseWin)}</td>
+        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;font-weight:bold;color:#991b1b;">&#8722;${fmt(expenseWin)}</td>
+        <td style="border:1px solid #999;padding:6px 10px;"></td>
+      </tr>` : "";
+
+    const el = document.createElement("div");
+    el.style.cssText =
+      "position:absolute;left:-9999px;top:0;background:#fff;padding:24px;font-family:Arial,sans-serif;color:#000;width:520px;";
+    el.innerHTML = `
+      <div style="font-size:18px;font-weight:bold;margin-bottom:4px;">Game Summary</div>
+      <div style="font-size:12px;color:#666;margin-bottom:16px;">${date}</div>
+      <table style="border-collapse:collapse;width:100%;">
+        <thead>
+          <tr style="background:#f3f4f6;">
+            <th style="border:1px solid #999;padding:6px 10px;font-size:12px;text-align:center;width:32px;">#</th>
+            <th style="border:1px solid #999;padding:6px 10px;font-size:12px;text-align:left;text-transform:uppercase;letter-spacing:.05em;">Agent</th>
+            <th style="border:1px solid #999;padding:6px 10px;font-size:12px;text-align:right;text-transform:uppercase;letter-spacing:.05em;">Total Game</th>
+            <th style="border:1px solid #999;padding:6px 10px;font-size:12px;text-align:right;text-transform:uppercase;letter-spacing:.05em;">Total Win</th>
+            <th style="border:1px solid #999;padding:6px 10px;font-size:12px;text-align:right;text-transform:uppercase;letter-spacing:.05em;">P / L</th>
+            <th style="border:1px solid #999;padding:6px 10px;font-size:12px;text-align:center;text-transform:uppercase;letter-spacing:.05em;">Tag</th>
+          </tr>
+        </thead>
+        <tbody>${dataRows}${expenseGameRowHtml}${expenseWinRowHtml}</tbody>
+        <tfoot>
+          <tr style="background:#f9fafb;border-top:2px solid #666;font-weight:bold;">
+            <td style="border:1px solid #999;padding:6px 10px;"></td>
+            <td style="border:1px solid #999;padding:6px 10px;">Total</td>
+            <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;">${fmt(totGameDisplay)}</td>
+            <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;">${fmt(totWinDisplay)}</td>
+            <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:${netColor};">${fmt(Math.abs(adjustedGrandPL))}</td>
+            <td style="border:1px solid #999;padding:6px 10px;text-align:center;color:${netColor};">${adjustedGrandTag}</td>
+          </tr>
+          <tr style="background:#f9fafb;">
+            <td colspan="6" style="border:1px solid #999;padding:4px 10px;font-size:10px;color:#666;font-style:italic;">
+              P/L = ${fmt(totGameDisplay)} &minus; ${fmt(totWinDisplay)} = ${fmt(Math.abs(adjustedGrandPL))} ${adjustedGrandTag}
+            </td>
+          </tr>
+        </tfoot>
+      </table>`;
+
+    document.body.appendChild(el);
+    try {
+      const h2c = (await import("html2canvas")).default;
+      const canvas = await h2c(el, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
+      document.body.removeChild(el);
+      canvas.toBlob(async (blob) => {
+        const fname = `summary-${date.replace(/\//g, "-")}.png`;
+        const file = new File([blob], fname, { type: "image/png" });
+        try {
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: `Game Summary ${date}` });
+          } else {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url; a.download = fname; a.click();
+            URL.revokeObjectURL(url);
+          }
+        } catch { /* user cancelled */ }
+      }, "image/png");
+    } catch (err) {
+      document.body.removeChild(el);
+      console.error(err);
+    }
+  }
+
   const q = search.trim().toLowerCase();
   const filteredEntries = Object.entries(groups)
     .filter(
@@ -263,6 +479,26 @@ export default function VisitorPage() {
       {/* ── Admin summary table ── */}
       {!loading && summaryRows.length > 0 && (
         <div className="max-w-2xl mx-auto mb-6">
+          <div className="flex justify-end gap-2 mb-2">
+            <button
+              onClick={shareWhatsApp}
+              className="text-xs px-3 py-1 border border-green-400 rounded hover:bg-green-50 text-green-600 transition print:hidden">
+              📤 Share
+            </button>
+            <button
+              onClick={() =>
+                printSummary(
+                  summaryRows, grandGame, grandWin, grandPL, grandTag,
+                  expenseWin, expenseLabelWin,
+                  expenseGame, expenseLabelGame,
+                  totalWinDisc,
+                  adjustedGrandPL, adjustedGrandTag,
+                )
+              }
+              className="text-xs px-3 py-1 border border-gray-300 rounded hover:bg-gray-100 text-gray-500 transition print:hidden">
+              🖨 Print
+            </button>
+          </div>
           <div className="overflow-x-auto">
             <table
               className="w-full border-collapse text-black"
@@ -288,11 +524,9 @@ export default function VisitorPage() {
                       {fmt(r.netGame)}
                     </td>
                     <td className={`${std} text-right`}>
-                      <div className="font-mono">{fmt(r.rawWin)}</div>
+                      <div className="font-mono">{fmt(r.rawWin + (r.winDiscAmount || 0))}</div>
                       {r.winDiscApplied && r.winDiscAmount > 0 && (
-                        <div className="text-xs text-blue-500 font-mono">
-                          +{fmt(r.winDiscAmount)} W.disc
-                        </div>
+                        <div className="text-xs text-blue-500">W.disc</div>
                       )}
                     </td>
                     <td className={`${std} text-right`}>
@@ -322,7 +556,7 @@ export default function VisitorPage() {
                       {fmt(expenseGame)}
                     </td>
                     <td className={`${std}`}></td>
-                    <td className={`${std}`}></td>
+                    <td className={`${std} text-right font-mono font-bold text-green-700`}>+{fmt(expenseGame)}</td>
                     <td className={`${std}`}></td>
                   </tr>
                 )}
@@ -336,7 +570,7 @@ export default function VisitorPage() {
                     <td className={`${std} text-right font-mono text-red-600`}>
                       {fmt(expenseWin)}
                     </td>
-                    <td className={`${std}`}></td>
+                    <td className={`${std} text-right font-mono font-bold text-red-600`}>−{fmt(expenseWin)}</td>
                     <td className={`${std}`}></td>
                   </tr>
                 )}
@@ -391,15 +625,15 @@ export default function VisitorPage() {
             <div className="flex justify-between items-center text-sm">
               <span className="text-gray-500">Current Session</span>
               <span
-                className={`font-mono font-bold ${grandPL >= 0 ? "text-green-700" : "text-red-600"}`}>
-                {fmt(Math.abs(grandPL))} {grandTag}
+                className={`font-mono font-bold ${adjustedGrandPL >= 0 ? "text-green-700" : "text-red-600"}`}>
+                {fmt(Math.abs(adjustedGrandPL))} {adjustedGrandTag}
               </span>
             </div>
           )}
           {previousPL !== 0 &&
             summaryRows.length > 0 &&
             (() => {
-              const combined = previousPL + grandPL;
+              const combined = previousPL + adjustedGrandPL;
               const combinedTag = combined >= 0 ? "BANKER" : "AGENT";
               return (
                 <div className="flex justify-between items-center pt-2 border-t border-gray-200 text-sm font-bold">

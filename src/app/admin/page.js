@@ -46,7 +46,7 @@ function printSummary(
       <td style="border:1px solid #999;padding:6px 10px;color:#666;font-style:italic;">${expenseLabelGame}</td>
       <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#991b1b;">${fmt(expenseGame)}</td>
       <td style="border:1px solid #999;padding:6px 10px;"></td>
-      <td style="border:1px solid #999;padding:6px 10px;"></td>
+      <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;font-weight:bold;color:#166534;">+${fmt(expenseGame)}</td>
       <td style="border:1px solid #999;padding:6px 10px;"></td>
     </tr>`
       : "";
@@ -58,7 +58,7 @@ function printSummary(
       <td style="border:1px solid #999;padding:6px 10px;color:#666;font-style:italic;">${expenseLabelWin}</td>
       <td style="border:1px solid #999;padding:6px 10px;"></td>
       <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#991b1b;">${fmt(expenseWin)}</td>
-      <td style="border:1px solid #999;padding:6px 10px;"></td>
+      <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;font-weight:bold;color:#991b1b;">−${fmt(expenseWin)}</td>
       <td style="border:1px solid #999;padding:6px 10px;"></td>
     </tr>`
       : "";
@@ -324,7 +324,7 @@ export default function AdminHome() {
         <td style="border:1px solid #999;padding:6px 10px;color:#666;font-style:italic;">${expenseLabelGame}</td>
         <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#991b1b;">${fmt(expenseGame)}</td>
         <td style="border:1px solid #999;padding:6px 10px;"></td>
-        <td style="border:1px solid #999;padding:6px 10px;"></td>
+        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;font-weight:bold;color:#166534;">+${fmt(expenseGame)}</td>
         <td style="border:1px solid #999;padding:6px 10px;"></td>
       </tr>`
         : "";
@@ -336,7 +336,7 @@ export default function AdminHome() {
         <td style="border:1px solid #999;padding:6px 10px;color:#666;font-style:italic;">${expenseLabelWin}</td>
         <td style="border:1px solid #999;padding:6px 10px;"></td>
         <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#991b1b;">${fmt(expenseWin)}</td>
-        <td style="border:1px solid #999;padding:6px 10px;"></td>
+        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;font-weight:bold;color:#991b1b;">−${fmt(expenseWin)}</td>
         <td style="border:1px solid #999;padding:6px 10px;"></td>
       </tr>`
         : "";
@@ -493,7 +493,7 @@ export default function AdminHome() {
                     <td className={`${td} text-gray-400 italic`}>{expenseLabelGame}</td>
                     <td className={`${td} text-right font-mono text-red-400`}>{fmt(expenseGame)}</td>
                     <td className={`${td}`}></td>
-                    <td className={`${td}`}></td>
+                    <td className={`${td} text-right font-mono font-bold text-green-400`}>+{fmt(expenseGame)}</td>
                     <td className={`${td}`}></td>
                   </tr>
                 )}
@@ -503,7 +503,7 @@ export default function AdminHome() {
                     <td className={`${td} text-gray-400 italic`}>{expenseLabelWin}</td>
                     <td className={`${td}`}></td>
                     <td className={`${td} text-right font-mono text-red-400`}>{fmt(expenseWin)}</td>
-                    <td className={`${td}`}></td>
+                    <td className={`${td} text-right font-mono font-bold text-red-400`}>−{fmt(expenseWin)}</td>
                     <td className={`${td}`}></td>
                   </tr>
                 )}
@@ -737,7 +737,7 @@ export default function AdminHome() {
                                 <td className={`${td} text-gray-400 italic`}>{snap.expenseLabelGame || "Expense (Game)"}</td>
                                 <td className={`${td} text-right font-mono text-red-400`}>{fmt(snap.expenseGame)}</td>
                                 <td className={`${td}`}></td>
-                                <td className={`${td}`}></td>
+                                <td className={`${td} text-right font-mono font-bold text-green-400`}>+{fmt(snap.expenseGame)}</td>
                                 <td className={`${td}`}></td>
                               </tr>
                             )}
@@ -747,7 +747,7 @@ export default function AdminHome() {
                                 <td className={`${td} text-gray-400 italic`}>{snap.expenseLabelWin || "Expense (Win)"}</td>
                                 <td className={`${td}`}></td>
                                 <td className={`${td} text-right font-mono text-red-400`}>{fmt(snap.expenseWin)}</td>
-                                <td className={`${td}`}></td>
+                                <td className={`${td} text-right font-mono font-bold text-red-400`}>−{fmt(snap.expenseWin)}</td>
                                 <td className={`${td}`}></td>
                               </tr>
                             )}
