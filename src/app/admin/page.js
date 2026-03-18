@@ -24,16 +24,16 @@ function printSummary(
   });
   const netPL = adjustedGrandPL ?? grandPL;
   const netTag = adjustedGrandTag ?? grandTag;
-  const totGame = grandGame + expenseGame;
-  const totWin = grandWin + totalWinDisc + expenseWin;
+  const netExp = expenseGame - expenseWin;
+  const totGame = grandGame + (netExp > 0 ? netExp : 0);
+  const totWin = grandWin + totalWinDisc + (netExp < 0 ? -netExp : 0);
 
   const dataRows = rows
     .map((r, i) => {
       const plColor = r.tag === "BANKER" ? "#166534" : "#991b1b";
-      const combinedWin = r.rawWin + (r.winDiscAmount || 0);
       const winCell =
         r.winDiscApplied && r.winDiscAmount > 0
-          ? `<div style="font-family:monospace;">${fmt(combinedWin)}</div><div style="font-size:10px;color:#1d4ed8;">W.disc</div>`
+          ? `<div style="font-family:monospace;">${fmt(r.rawWin)}</div><div style="font-size:10px;color:#1d4ed8;font-family:monospace;">+${fmt(r.winDiscAmount)} W.disc</div>`
           : `<div style="font-family:monospace;">${fmt(r.rawWin)}</div>`;
       return `<tr>
       <td style="border:1px solid #999;padding:6px 10px;text-align:center;color:#888;">${i + 1}</td>
@@ -50,22 +50,20 @@ function printSummary(
 
   const expenseRow = (() => {
     if (expenseGame === 0 && expenseWin === 0) return "";
-    const netPL = expenseGame - expenseWin;
-    const pos = netPL >= 0;
+    const netExp = expenseGame - expenseWin;
+    if (netExp === 0) return "";
     const label =
       expenseGame !== 0 && expenseWin !== 0
         ? "Expense"
         : expenseGame !== 0
           ? expenseLabelGame
           : expenseLabelWin;
-    const plColor = pos ? "#166534" : "#991b1b";
-    const plText = pos ? `+${fmt(netPL)}` : `&#8722;${fmt(Math.abs(netPL))}`;
     return `<tr>
       <td style="border:1px solid #999;padding:6px 10px;"></td>
       <td style="border:1px solid #999;padding:6px 10px;color:#666;font-style:italic;">${label}</td>
-      <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#166534;">${expenseGame !== 0 ? fmt(expenseGame) : ""}</td>
-      <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#991b1b;">${expenseWin !== 0 ? fmt(expenseWin) : ""}</td>
-      <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;font-weight:bold;color:${plColor};">${plText}</td>
+      <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;${netExp > 0 ? "color:#166534;" : ""}">${netExp > 0 ? fmt(netExp) : ""}</td>
+      <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;${netExp < 0 ? "color:#991b1b;" : ""}">${netExp < 0 ? fmt(-netExp) : ""}</td>
+      <td style="border:1px solid #999;padding:6px 10px;"></td>
       <td style="border:1px solid #999;padding:6px 10px;"></td>
     </tr>`;
   })();
@@ -111,13 +109,14 @@ function printSummary(
         <td style="text-align:right;font-family:monospace;color:${netColor};">${fmt(Math.abs(netPL))}</td>
         <td style="text-align:center;color:${netColor};">${netTag}</td>
       </tr>
-      <tr style="background:#f9fafb;">
-        <td colspan="6" style="font-size:11px;color:#666;font-style:italic;border-top:none;">
-          P/L = ${fmt(totGame)} &minus; ${fmt(totWin)} = ${fmt(Math.abs(netPL))} ${netTag}
-        </td>
-      </tr>
+     
     </tfoot>
   </table>
+  ${expenseGame !== 0 || expenseWin !== 0 ? `
+  <div style="margin-top:8px;font-size:11px;color:#555;">
+    ${expenseGame !== 0 ? `<div><span style="color:#166534;font-family:monospace;font-weight:600;">GET ${fmt(expenseGame)}</span> — Received from other bookmakers (added to Game)</div>` : ""}
+    ${expenseWin !== 0 ? `<div><span style="color:#991b1b;font-family:monospace;font-weight:600;">LOST ${fmt(expenseWin)}</span> — Paid to other bookmakers (added to Win)</div>` : ""}
+  </div>` : ""}
   <script>window.onload = () => window.print();<\/script>
 </body>
 </html>`;
@@ -313,8 +312,9 @@ export default function AdminHome() {
   const grandPL = rows.reduce((s, r) => s + r.pl, 0);
   const grandTag = grandPL >= 0 ? "BANKER" : "AGENT";
   const totalWinDisc = rows.reduce((s, r) => s + r.winDiscAmount, 0);
-  const totGameDisplay = grandGame + expenseGame;
-  const totWinDisplay = grandWin + totalWinDisc + expenseWin;
+  const netExp = expenseGame - expenseWin;
+  const totGameDisplay = grandGame + (netExp > 0 ? netExp : 0);
+  const totWinDisplay = grandWin + totalWinDisc + (netExp < 0 ? -netExp : 0);
   const adjustedGrandPL = grandPL + expenseGame - expenseWin;
   const adjustedGrandTag = adjustedGrandPL >= 0 ? "BANKER" : "AGENT";
 
@@ -326,10 +326,9 @@ export default function AdminHome() {
     const dataRows = rows
       .map((r, i) => {
         const plColor = r.tag === "BANKER" ? "#166534" : "#991b1b";
-        const combinedWin = r.rawWin + (r.winDiscAmount || 0);
         const winCell =
           r.winDiscApplied && r.winDiscAmount > 0
-            ? `<div style="font-family:monospace;">${fmt(combinedWin)}</div><div style="font-size:10px;color:#1d4ed8;">W.disc</div>`
+            ? `<div style="font-family:monospace;">${fmt(r.rawWin)}</div><div style="font-size:10px;color:#1d4ed8;font-family:monospace;">+${fmt(r.winDiscAmount)} W.disc</div>`
             : `<div style="font-family:monospace;">${fmt(r.rawWin)}</div>`;
         return `<tr>
         <td style="border:1px solid #999;padding:6px 10px;text-align:center;color:#888;">${i + 1}</td>
@@ -344,22 +343,20 @@ export default function AdminHome() {
 
     const expenseRowHtml = (() => {
       if (expenseGame === 0 && expenseWin === 0) return "";
-      const netPL = expenseGame - expenseWin;
-      const pos = netPL >= 0;
+      const netExp = expenseGame - expenseWin;
+      if (netExp === 0) return "";
       const label =
         expenseGame !== 0 && expenseWin !== 0
           ? "Expense"
           : expenseGame !== 0
             ? expenseLabelGame
             : expenseLabelWin;
-      const plColor = pos ? "#166534" : "#991b1b";
-      const plText = pos ? `+${fmt(netPL)}` : `&#8722;${fmt(Math.abs(netPL))}`;
       return `<tr>
         <td style="border:1px solid #999;padding:6px 10px;"></td>
         <td style="border:1px solid #999;padding:6px 10px;color:#666;font-style:italic;">${label}</td>
-        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#166534;">${expenseGame !== 0 ? fmt(expenseGame) : ""}</td>
-        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#991b1b;">${expenseWin !== 0 ? fmt(expenseWin) : ""}</td>
-        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;font-weight:bold;color:${plColor};">${plText}</td>
+        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;${netExp > 0 ? "color:#166534;" : ""}">${netExp > 0 ? fmt(netExp) : ""}</td>
+        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;${netExp < 0 ? "color:#991b1b;" : ""}">${netExp < 0 ? fmt(-netExp) : ""}</td>
+        <td style="border:1px solid #999;padding:6px 10px;"></td>
         <td style="border:1px solid #999;padding:6px 10px;"></td>
       </tr>`;
     })();
@@ -391,13 +388,14 @@ export default function AdminHome() {
             <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:${netColor};">${fmt(Math.abs(adjustedGrandPL))}</td>
             <td style="border:1px solid #999;padding:6px 10px;text-align:center;color:${netColor};">${adjustedGrandTag}</td>
           </tr>
-          <tr style="background:#f9fafb;">
-            <td colspan="6" style="border:1px solid #999;padding:4px 10px;font-size:10px;color:#666;font-style:italic;">
-              P/L = ${fmt(totGameDisplay)} &minus; ${fmt(totWinDisplay)} = ${fmt(Math.abs(adjustedGrandPL))} ${adjustedGrandTag}
-            </td>
-          </tr>
+       
         </tfoot>
-      </table>`;
+      </table>
+      ${expenseGame !== 0 || expenseWin !== 0 ? `
+      <div style="margin-top:8px;font-size:11px;color:#555;">
+        ${expenseGame !== 0 ? `<div><span style="color:#166534;font-family:monospace;font-weight:600;">GET ${fmt(expenseGame)}</span> — Received from other bookmakers (added to Game)</div>` : ""}
+        ${expenseWin !== 0 ? `<div><span style="color:#991b1b;font-family:monospace;font-weight:600;">LOST ${fmt(expenseWin)}</span> — Paid to other bookmakers (added to Win)</div>` : ""}
+      </div>` : ""}`;
 
     document.body.appendChild(el);
     try {
@@ -522,11 +520,11 @@ export default function AdminHome() {
                       {fmt(r.netGame)}
                     </td>
                     <td className={`${td} text-right`}>
-                      <div className="font-mono">
-                        {fmt(r.rawWin + (r.winDiscAmount || 0))}
-                      </div>
+                      <div className="font-mono">{fmt(r.rawWin)}</div>
                       {r.winDiscApplied && r.winDiscAmount > 0 && (
-                        <div className="text-xs text-blue-400">W.disc</div>
+                        <div className="text-xs text-blue-400 font-mono">
+                          +{fmt(r.winDiscAmount)} W.disc
+                        </div>
                       )}
                     </td>
                     <td
@@ -543,8 +541,8 @@ export default function AdminHome() {
                 ))}
                 {(expenseGame !== 0 || expenseWin !== 0) &&
                   (() => {
-                    const netPL = expenseGame - expenseWin;
-                    const pos = netPL >= 0;
+                    const netExp = expenseGame - expenseWin;
+                    if (netExp === 0) return null;
                     const label =
                       expenseGame !== 0 && expenseWin !== 0
                         ? "Expense"
@@ -558,17 +556,14 @@ export default function AdminHome() {
                           {label}
                         </td>
                         <td
-                          className={`${td} text-right font-mono ${expenseGame !== 0 ? "text-green-400" : ""}`}>
-                          {expenseGame !== 0 ? fmt(expenseGame) : ""}
+                          className={`${td} text-right font-mono ${netExp > 0 ? "text-green-400" : ""}`}>
+                          {netExp > 0 ? fmt(netExp) : ""}
                         </td>
                         <td
-                          className={`${td} text-right font-mono ${expenseWin !== 0 ? "text-red-400" : ""}`}>
-                          {expenseWin !== 0 ? fmt(expenseWin) : ""}
+                          className={`${td} text-right font-mono ${netExp < 0 ? "text-red-400" : ""}`}>
+                          {netExp < 0 ? fmt(-netExp) : ""}
                         </td>
-                        <td
-                          className={`${td} text-right font-mono font-bold ${pos ? "text-green-400" : "text-red-400"}`}>
-                          {pos ? `+${fmt(netPL)}` : `−${fmt(Math.abs(netPL))}`}
-                        </td>
+                        <td className={`${td}`}></td>
                         <td className={`${td}`}></td>
                       </tr>
                     );
@@ -598,16 +593,25 @@ export default function AdminHome() {
                     </span>
                   </td>
                 </tr>
-                <tr className="bg-gray-900">
-                  <td
-                    colSpan={6}
-                    className="border border-gray-700 px-3 py-1 text-xs text-gray-500 italic">
-                    P/L = {fmt(totGameDisplay)} &minus; {fmt(totWinDisplay)} ={" "}
-                    {fmt(Math.abs(adjustedGrandPL))} {adjustedGrandTag}
-                  </td>
-                </tr>
+              
               </tfoot>
             </table>
+            {(expenseGame !== 0 || expenseWin !== 0) && (
+              <div className="mt-2 px-1 space-y-0.5">
+                {expenseGame !== 0 && (
+                  <div className="text-xs text-gray-500">
+                    <span className="text-green-400 font-mono font-semibold">GET {fmt(expenseGame)}</span>
+                    {" "}— Received from other bookmakers (added to Game)
+                  </div>
+                )}
+                {expenseWin !== 0 && (
+                  <div className="text-xs text-gray-500">
+                    <span className="text-red-400 font-mono font-semibold">LOST {fmt(expenseWin)}</span>
+                    {" "}— Paid to other bookmakers (added to Win)
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -834,12 +838,10 @@ export default function AdminHome() {
                                   {fmt(r.netGame)}
                                 </td>
                                 <td className={`${td} text-right`}>
-                                  <div className="font-mono">
-                                    {fmt(r.rawWin + (r.winDiscAmount || 0))}
-                                  </div>
+                                  <div className="font-mono">{fmt(r.rawWin)}</div>
                                   {r.winDiscApplied && r.winDiscAmount > 0 && (
-                                    <div className="text-xs text-blue-400">
-                                      W.disc
+                                    <div className="text-xs text-blue-400 font-mono">
+                                      +{fmt(r.winDiscAmount)} W.disc
                                     </div>
                                   )}
                                 </td>
@@ -862,8 +864,8 @@ export default function AdminHome() {
                               (() => {
                                 const sg = snap.expenseGame ?? 0;
                                 const sw = snap.expenseWin ?? 0;
-                                const netPL = sg - sw;
-                                const pos = netPL >= 0;
+                                const netExp = sg - sw;
+                                if (netExp === 0) return null;
                                 const label =
                                   sg !== 0 && sw !== 0
                                     ? "Expense"
@@ -878,19 +880,14 @@ export default function AdminHome() {
                                       {label}
                                     </td>
                                     <td
-                                      className={`${td} text-right font-mono ${sg !== 0 ? "text-green-400" : ""}`}>
-                                      {sg !== 0 ? fmt(sg) : ""}
+                                      className={`${td} text-right font-mono ${netExp > 0 ? "text-green-400" : ""}`}>
+                                      {netExp > 0 ? fmt(netExp) : ""}
                                     </td>
                                     <td
-                                      className={`${td} text-right font-mono ${sw !== 0 ? "text-red-400" : ""}`}>
-                                      {sw !== 0 ? fmt(sw) : ""}
+                                      className={`${td} text-right font-mono ${netExp < 0 ? "text-red-400" : ""}`}>
+                                      {netExp < 0 ? fmt(-netExp) : ""}
                                     </td>
-                                    <td
-                                      className={`${td} text-right font-mono font-bold ${pos ? "text-green-400" : "text-red-400"}`}>
-                                      {pos
-                                        ? `+${fmt(netPL)}`
-                                        : `−${fmt(Math.abs(netPL))}`}
-                                    </td>
+                                    <td className={`${td}`}></td>
                                     <td className={`${td}`}></td>
                                   </tr>
                                 );
@@ -906,14 +903,14 @@ export default function AdminHome() {
                               <td className={`${td} text-right font-mono`}>
                                 {fmt(
                                   (snap.grandGame ?? 0) +
-                                    (snap.expenseGame ?? 0),
+                                    Math.max(0, (snap.expenseGame ?? 0) - (snap.expenseWin ?? 0)),
                                 )}
                               </td>
                               <td className={`${td} text-right font-mono`}>
                                 {fmt(
                                   (snap.grandWin ?? 0) +
                                     (snap.totalWinDisc ?? 0) +
-                                    (snap.expenseWin ?? 0),
+                                    Math.max(0, (snap.expenseWin ?? 0) - (snap.expenseGame ?? 0)),
                                 )}
                               </td>
                               <td
@@ -934,13 +931,13 @@ export default function AdminHome() {
                                 P/L ={" "}
                                 {fmt(
                                   (snap.grandGame ?? 0) +
-                                    (snap.expenseGame ?? 0),
+                                    Math.max(0, (snap.expenseGame ?? 0) - (snap.expenseWin ?? 0)),
                                 )}{" "}
                                 &minus;{" "}
                                 {fmt(
                                   (snap.grandWin ?? 0) +
                                     (snap.totalWinDisc ?? 0) +
-                                    (snap.expenseWin ?? 0),
+                                    Math.max(0, (snap.expenseWin ?? 0) - (snap.expenseGame ?? 0)),
                                 )}{" "}
                                 = {fmt(Math.abs(snapFinalPL))} {snapTag}
                               </td>
