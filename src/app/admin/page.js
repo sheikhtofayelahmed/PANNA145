@@ -6,13 +6,22 @@ function fmt(n) {
 }
 
 function printSummary(
-  rows, grandGame, grandWin, grandPL, grandTag,
-  expenseWin = 0, expenseLabelWin = "Expense (Win)",
-  expenseGame = 0, expenseLabelGame = "Expense (Game)",
+  rows,
+  grandGame,
+  grandWin,
+  grandPL,
+  grandTag,
+  expenseWin = 0,
+  expenseLabelWin = "Expense (Win)",
+  expenseGame = 0,
+  expenseLabelGame = "Expense (Game)",
   totalWinDisc = 0,
-  adjustedGrandPL = null, adjustedGrandTag = null,
+  adjustedGrandPL = null,
+  adjustedGrandTag = null,
 ) {
-  const date = new Date().toLocaleDateString("en-GB", { timeZone: "Asia/Riyadh" });
+  const date = new Date().toLocaleDateString("en-GB", {
+    timeZone: "Asia/Riyadh",
+  });
   const netPL = adjustedGrandPL ?? grandPL;
   const netTag = adjustedGrandTag ?? grandTag;
   const totGame = grandGame + expenseGame;
@@ -43,7 +52,12 @@ function printSummary(
     if (expenseGame === 0 && expenseWin === 0) return "";
     const netPL = expenseGame - expenseWin;
     const pos = netPL >= 0;
-    const label = expenseGame !== 0 && expenseWin !== 0 ? "Expense" : expenseGame !== 0 ? expenseLabelGame : expenseLabelWin;
+    const label =
+      expenseGame !== 0 && expenseWin !== 0
+        ? "Expense"
+        : expenseGame !== 0
+          ? expenseLabelGame
+          : expenseLabelWin;
     const plColor = pos ? "#166534" : "#991b1b";
     const plText = pos ? `+${fmt(netPL)}` : `&#8722;${fmt(Math.abs(netPL))}`;
     return `<tr>
@@ -140,7 +154,9 @@ export default function AdminHome() {
     setClearing(true);
     setShowClearModal(false);
     setClearText("");
-    const saDate = new Date().toLocaleDateString("en-GB", { timeZone: "Asia/Riyadh" });
+    const saDate = new Date().toLocaleDateString("en-GB", {
+      timeZone: "Asia/Riyadh",
+    });
     await Promise.all([
       fetch("/api/pl-history", {
         method: "POST",
@@ -184,16 +200,29 @@ export default function AdminHome() {
     await fetch("/api/expense", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ winAmount: 0, winLabel: "LOST", gameAmount: 0, gameLabel: "GET" }),
+      body: JSON.stringify({
+        winAmount: 0,
+        winLabel: "LOST",
+        gameAmount: 0,
+        gameLabel: "GET",
+      }),
     });
     setPreviousPL((prev) => (prev ?? 0) + adjustedGrandPL);
     setSummaryHistory((prev) => [
       {
         date: saDate,
         rows: rows.map((r) => ({ ...r })),
-        grandGame, grandWin, grandPL, grandTag,
-        expenseWin, expenseLabelWin, expenseGame, expenseLabelGame,
-        totalWinDisc, adjustedGrandPL, adjustedGrandTag,
+        grandGame,
+        grandWin,
+        grandPL,
+        grandTag,
+        expenseWin,
+        expenseLabelWin,
+        expenseGame,
+        expenseLabelGame,
+        totalWinDisc,
+        adjustedGrandPL,
+        adjustedGrandTag,
         clearedAt: new Date().toISOString(),
       },
       ...prev,
@@ -207,13 +236,14 @@ export default function AdminHome() {
   useEffect(() => {
     async function load() {
       try {
-        const [gameRes, agentRes, histRes, summaryRes, expenseRes] = await Promise.all([
-          fetch("/api/visitor-game-data"),
-          fetch("/api/get-all-agents"),
-          fetch("/api/pl-history"),
-          fetch("/api/summary-history"),
-          fetch("/api/expense"),
-        ]);
+        const [gameRes, agentRes, histRes, summaryRes, expenseRes] =
+          await Promise.all([
+            fetch("/api/visitor-game-data"),
+            fetch("/api/get-all-agents"),
+            fetch("/api/pl-history"),
+            fetch("/api/summary-history"),
+            fetch("/api/expense"),
+          ]);
         const gameJson = await gameRes.json();
         const agentJson = await agentRes.json();
         const histJson = await histRes.json();
@@ -289,7 +319,9 @@ export default function AdminHome() {
   const adjustedGrandTag = adjustedGrandPL >= 0 ? "BANKER" : "AGENT";
 
   async function shareWhatsApp() {
-    const date = new Date().toLocaleDateString("en-GB", { timeZone: "Asia/Riyadh" });
+    const date = new Date().toLocaleDateString("en-GB", {
+      timeZone: "Asia/Riyadh",
+    });
     const netColor = adjustedGrandTag === "BANKER" ? "#166534" : "#991b1b";
     const dataRows = rows
       .map((r, i) => {
@@ -314,7 +346,12 @@ export default function AdminHome() {
       if (expenseGame === 0 && expenseWin === 0) return "";
       const netPL = expenseGame - expenseWin;
       const pos = netPL >= 0;
-      const label = expenseGame !== 0 && expenseWin !== 0 ? "Expense" : expenseGame !== 0 ? expenseLabelGame : expenseLabelWin;
+      const label =
+        expenseGame !== 0 && expenseWin !== 0
+          ? "Expense"
+          : expenseGame !== 0
+            ? expenseLabelGame
+            : expenseLabelWin;
       const plColor = pos ? "#166534" : "#991b1b";
       const plText = pos ? `+${fmt(netPL)}` : `&#8722;${fmt(Math.abs(netPL))}`;
       return `<tr>
@@ -365,21 +402,32 @@ export default function AdminHome() {
     document.body.appendChild(el);
     try {
       const h2c = (await import("html2canvas")).default;
-      const canvas = await h2c(el, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
+      const canvas = await h2c(el, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        useCORS: true,
+      });
       document.body.removeChild(el);
       canvas.toBlob(async (blob) => {
         const fname = `summary-${date.replace(/\//g, "-")}.png`;
         const file = new File([blob], fname, { type: "image/png" });
         try {
           if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({ files: [file], title: `Game Summary ${date}` });
+            await navigator.share({
+              files: [file],
+              title: `Game Summary ${date}`,
+            });
           } else {
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
-            a.href = url; a.download = fname; a.click();
+            a.href = url;
+            a.download = fname;
+            a.click();
             URL.revokeObjectURL(url);
           }
-        } catch { /* user cancelled */ }
+        } catch {
+          /* user cancelled */
+        }
       }, "image/png");
     } catch (err) {
       document.body.removeChild(el);
@@ -408,11 +456,18 @@ export default function AdminHome() {
               <button
                 onClick={() =>
                   printSummary(
-                    rows, grandGame, grandWin, grandPL, grandTag,
-                    expenseWin, expenseLabelWin,
-                    expenseGame, expenseLabelGame,
+                    rows,
+                    grandGame,
+                    grandWin,
+                    grandPL,
+                    grandTag,
+                    expenseWin,
+                    expenseLabelWin,
+                    expenseGame,
+                    expenseLabelGame,
                     totalWinDisc,
-                    adjustedGrandPL, adjustedGrandTag,
+                    adjustedGrandPL,
+                    adjustedGrandTag,
                   )
                 }
                 className="px-4 py-1.5 text-xs border border-gray-600 hover:bg-gray-800 text-gray-300 font-bold rounded-lg transition">
@@ -421,7 +476,10 @@ export default function AdminHome() {
             </>
           )}
           <button
-            onClick={() => { setClearText(""); setShowClearModal(true); }}
+            onClick={() => {
+              setClearText("");
+              setShowClearModal(true);
+            }}
             disabled={clearing || rows.length === 0}
             className="px-4 py-1.5 text-xs bg-red-900 hover:bg-red-800 disabled:opacity-40 text-red-200 font-bold rounded-lg transition">
             {clearing ? "Clearing..." : "Clear All Data"}
@@ -440,7 +498,9 @@ export default function AdminHome() {
       ) : (
         <div ref={tableRef} className="bg-gray-950 rounded-lg p-2">
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse" style={{ minWidth: "420px" }}>
+            <table
+              className="w-full border-collapse"
+              style={{ minWidth: "420px" }}>
               <thead>
                 <tr className="bg-gray-900">
                   <th className={`${th} text-center w-8`}>#</th>
@@ -454,59 +514,96 @@ export default function AdminHome() {
               <tbody>
                 {rows.map((r, i) => (
                   <tr key={r.agentId} className="hover:bg-gray-900/40">
-                    <td className={`${td} text-center text-gray-500 text-xs`}>{i + 1}</td>
+                    <td className={`${td} text-center text-gray-500 text-xs`}>
+                      {i + 1}
+                    </td>
                     <td className={`${td} font-medium`}>{r.agentName}</td>
-                    <td className={`${td} text-right font-mono`}>{fmt(r.netGame)}</td>
+                    <td className={`${td} text-right font-mono`}>
+                      {fmt(r.netGame)}
+                    </td>
                     <td className={`${td} text-right`}>
-                      <div className="font-mono">{fmt(r.rawWin + (r.winDiscAmount || 0))}</div>
+                      <div className="font-mono">
+                        {fmt(r.rawWin + (r.winDiscAmount || 0))}
+                      </div>
                       {r.winDiscApplied && r.winDiscAmount > 0 && (
                         <div className="text-xs text-blue-400">W.disc</div>
                       )}
                     </td>
-                    <td className={`${td} text-right font-mono font-bold ${r.tag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
+                    <td
+                      className={`${td} text-right font-mono font-bold ${r.tag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
                       {fmt(Math.abs(r.pl))}
                     </td>
                     <td className={`${td} text-center`}>
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded ${r.tag === "BANKER" ? "bg-green-900/50 text-green-400" : "bg-red-900/50 text-red-400"}`}>
+                      <span
+                        className={`text-xs font-bold px-2 py-0.5 rounded ${r.tag === "BANKER" ? "bg-green-900/50 text-green-400" : "bg-red-900/50 text-red-400"}`}>
                         {r.tag}
                       </span>
                     </td>
                   </tr>
                 ))}
-                {(expenseGame !== 0 || expenseWin !== 0) && (() => {
-                  const netPL = expenseGame - expenseWin;
-                  const pos = netPL >= 0;
-                  const label = expenseGame !== 0 && expenseWin !== 0 ? "Expense" : expenseGame !== 0 ? expenseLabelGame : expenseLabelWin;
-                  return (
-                    <tr className="hover:bg-gray-900/40">
-                      <td className={`${td}`}></td>
-                      <td className={`${td} text-gray-400 italic`}>{label}</td>
-                      <td className={`${td} text-right font-mono ${expenseGame !== 0 ? "text-green-400" : ""}`}>{expenseGame !== 0 ? fmt(expenseGame) : ""}</td>
-                      <td className={`${td} text-right font-mono ${expenseWin !== 0 ? "text-red-400" : ""}`}>{expenseWin !== 0 ? fmt(expenseWin) : ""}</td>
-                      <td className={`${td} text-right font-mono font-bold ${pos ? "text-green-400" : "text-red-400"}`}>{pos ? `+${fmt(netPL)}` : `−${fmt(Math.abs(netPL))}`}</td>
-                      <td className={`${td}`}></td>
-                    </tr>
-                  );
-                })()}
+                {(expenseGame !== 0 || expenseWin !== 0) &&
+                  (() => {
+                    const netPL = expenseGame - expenseWin;
+                    const pos = netPL >= 0;
+                    const label =
+                      expenseGame !== 0 && expenseWin !== 0
+                        ? "Expense"
+                        : expenseGame !== 0
+                          ? expenseLabelGame
+                          : expenseLabelWin;
+                    return (
+                      <tr className="hover:bg-gray-900/40">
+                        <td className={`${td}`}></td>
+                        <td className={`${td} text-gray-400 italic`}>
+                          {label}
+                        </td>
+                        <td
+                          className={`${td} text-right font-mono ${expenseGame !== 0 ? "text-green-400" : ""}`}>
+                          {expenseGame !== 0 ? fmt(expenseGame) : ""}
+                        </td>
+                        <td
+                          className={`${td} text-right font-mono ${expenseWin !== 0 ? "text-red-400" : ""}`}>
+                          {expenseWin !== 0 ? fmt(expenseWin) : ""}
+                        </td>
+                        <td
+                          className={`${td} text-right font-mono font-bold ${pos ? "text-green-400" : "text-red-400"}`}>
+                          {pos ? `+${fmt(netPL)}` : `−${fmt(Math.abs(netPL))}`}
+                        </td>
+                        <td className={`${td}`}></td>
+                      </tr>
+                    );
+                  })()}
               </tbody>
               <tfoot>
                 <tr className="bg-gray-900 border-t-2 border-gray-600 font-bold">
                   <td className={`${td}`}></td>
-                  <td className={`${td} text-xs uppercase tracking-wider text-gray-400`}>Total</td>
-                  <td className={`${td} text-right font-mono`}>{fmt(totGameDisplay)}</td>
-                  <td className={`${td} text-right font-mono`}>{fmt(totWinDisplay)}</td>
-                  <td className={`${td} text-right font-mono font-bold ${adjustedGrandTag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
+                  <td
+                    className={`${td} text-xs uppercase tracking-wider text-gray-400`}>
+                    Total
+                  </td>
+                  <td className={`${td} text-right font-mono`}>
+                    {fmt(totGameDisplay)}
+                  </td>
+                  <td className={`${td} text-right font-mono`}>
+                    {fmt(totWinDisplay)}
+                  </td>
+                  <td
+                    className={`${td} text-right font-mono font-bold ${adjustedGrandTag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
                     {fmt(Math.abs(adjustedGrandPL))}
                   </td>
                   <td className={`${td} text-center`}>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded ${adjustedGrandTag === "BANKER" ? "bg-green-900/50 text-green-400" : "bg-red-900/50 text-red-400"}`}>
+                    <span
+                      className={`text-xs font-bold px-2 py-0.5 rounded ${adjustedGrandTag === "BANKER" ? "bg-green-900/50 text-green-400" : "bg-red-900/50 text-red-400"}`}>
                       {adjustedGrandTag}
                     </span>
                   </td>
                 </tr>
                 <tr className="bg-gray-900">
-                  <td colSpan={6} className="border border-gray-700 px-3 py-1 text-xs text-gray-500 italic">
-                    P/L = {fmt(totGameDisplay)} &minus; {fmt(totWinDisplay)} = {fmt(Math.abs(adjustedGrandPL))} {adjustedGrandTag}
+                  <td
+                    colSpan={6}
+                    className="border border-gray-700 px-3 py-1 text-xs text-gray-500 italic">
+                    P/L = {fmt(totGameDisplay)} &minus; {fmt(totWinDisplay)} ={" "}
+                    {fmt(Math.abs(adjustedGrandPL))} {adjustedGrandTag}
                   </td>
                 </tr>
               </tfoot>
@@ -518,42 +615,52 @@ export default function AdminHome() {
       {/* Accumulated P/L */}
       {previousPL !== null && (previousPL !== 0 || rows.length > 0) && (
         <div className="mt-4 bg-gray-900 border border-gray-700 rounded-xl p-4 space-y-2">
-          <div className="text-xs text-gray-500 uppercase tracking-wider mb-2">Accumulated P/L</div>
+          <div className="text-xs text-gray-500 uppercase tracking-wider mb-2">
+            Accumulated P/L
+          </div>
           {previousPL !== 0 && (
             <div className="flex justify-between items-center text-sm">
               <span className="text-gray-400">Previous Sessions</span>
-              <span className={`font-mono font-bold ${previousPL >= 0 ? "text-green-400" : "text-red-400"}`}>
-                {fmt(Math.abs(previousPL))} {previousPL >= 0 ? "BANKER" : "AGENT"}
+              <span
+                className={`font-mono font-bold ${previousPL >= 0 ? "text-green-400" : "text-red-400"}`}>
+                {fmt(Math.abs(previousPL))}{" "}
+                {previousPL >= 0 ? "BANKER" : "AGENT"}
               </span>
             </div>
           )}
           {rows.length > 0 && (
             <div className="flex justify-between items-center text-sm">
               <span className="text-gray-400">Current Session</span>
-              <span className={`font-mono font-bold ${adjustedGrandPL >= 0 ? "text-green-400" : "text-red-400"}`}>
+              <span
+                className={`font-mono font-bold ${adjustedGrandPL >= 0 ? "text-green-400" : "text-red-400"}`}>
                 {fmt(Math.abs(adjustedGrandPL))} {adjustedGrandTag}
               </span>
             </div>
           )}
-          {previousPL !== 0 && rows.length > 0 && (() => {
-            const combined = previousPL + adjustedGrandPL;
-            const combinedTag = combined >= 0 ? "BANKER" : "AGENT";
-            return (
-              <div className="flex justify-between items-center pt-2 border-t border-gray-700 text-sm font-bold">
-                <span className="text-white">Grand Total</span>
-                <span className={`font-mono text-lg ${combined >= 0 ? "text-green-400" : "text-red-400"}`}>
-                  {fmt(Math.abs(combined))} {combinedTag}
-                </span>
-              </div>
-            );
-          })()}
+          {previousPL !== 0 &&
+            rows.length > 0 &&
+            (() => {
+              const combined = previousPL + adjustedGrandPL;
+              const combinedTag = combined >= 0 ? "BANKER" : "AGENT";
+              return (
+                <div className="flex justify-between items-center pt-2 border-t border-gray-700 text-sm font-bold">
+                  <span className="text-white">Grand Total</span>
+                  <span
+                    className={`font-mono text-lg ${combined >= 0 ? "text-green-400" : "text-red-400"}`}>
+                    {fmt(Math.abs(combined))} {combinedTag}
+                  </span>
+                </div>
+              );
+            })()}
         </div>
       )}
 
       {/* Expense edit */}
       <div className="mt-4 bg-gray-900 border border-gray-700 rounded-xl p-4">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs text-gray-500 uppercase tracking-wider">Expense</span>
+          <span className="text-xs text-gray-500 uppercase tracking-wider">
+            Expense
+          </span>
           {!editingExpense && (
             <button
               onClick={() => {
@@ -570,7 +677,9 @@ export default function AdminHome() {
         </div>
         {editingExpense ? (
           <div className="space-y-3">
-            <div className="text-xs text-gray-500 uppercase tracking-wide">GET (Add to Game)</div>
+            <div className="text-xs text-gray-500 uppercase tracking-wide">
+              GET (Add to Game)
+            </div>
             <input
               type="text"
               value={expenseLabelGameInput}
@@ -586,7 +695,9 @@ export default function AdminHome() {
               placeholder="0"
               className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none"
             />
-            <div className="text-xs text-gray-500 uppercase tracking-wide pt-1">LOST (Add to Win)</div>
+            <div className="text-xs text-gray-500 uppercase tracking-wide pt-1">
+              LOST (Add to Win)
+            </div>
             <input
               type="text"
               value={expenseLabelWinInput}
@@ -636,14 +747,22 @@ export default function AdminHome() {
         ) : (
           <div className="space-y-1 text-sm">
             <div className="flex justify-between items-center">
-              <span className="text-gray-500 text-xs">Game</span>
-              <span className="text-gray-400 italic text-xs">{expenseLabelGame}</span>
-              <span className="font-mono font-bold text-red-400">{expenseGame !== 0 ? `+${fmt(expenseGame)}` : "—"}</span>
+              <span className="text-gray-500 text-xs">GET</span>
+              <span className="text-gray-400 italic text-xs">
+                {expenseLabelGame}
+              </span>
+              <span className="font-mono font-bold text-green-400">
+                {expenseGame !== 0 ? `+${fmt(expenseGame)}` : "—"}
+              </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-500 text-xs">Win</span>
-              <span className="text-gray-400 italic text-xs">{expenseLabelWin}</span>
-              <span className="font-mono font-bold text-red-400">{expenseWin !== 0 ? `+${fmt(expenseWin)}` : "—"}</span>
+              <span className="text-gray-500 text-xs">LOST</span>
+              <span className="text-gray-400 italic text-xs">
+                {expenseLabelWin}
+              </span>
+              <span className="font-mono font-bold text-red-400">
+                {expenseWin !== 0 ? `-${fmt(expenseWin)}` : "—"}
+              </span>
             </div>
           </div>
         )}
@@ -652,32 +771,45 @@ export default function AdminHome() {
       {/* Past Summaries */}
       {summaryHistory.length > 0 && (
         <div className="mt-6">
-          <h2 className="text-xs text-gray-500 uppercase tracking-wider mb-3">Past Summaries</h2>
+          <h2 className="text-xs text-gray-500 uppercase tracking-wider mb-3">
+            Past Summaries
+          </h2>
           <div className="space-y-2">
             {summaryHistory.map((snap, i) => {
               const isOpen = expandedHistory === i;
               const snapFinalPL = snap.adjustedGrandPL ?? snap.grandPL;
               const snapTag = snapFinalPL >= 0 ? "BANKER" : "AGENT";
               return (
-                <div key={i} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+                <div
+                  key={i}
+                  className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
                   <button
                     onClick={() => setExpandedHistory(isOpen ? null : i)}
                     className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-800 transition">
                     <div className="flex items-center gap-3">
-                      <span className="text-sm font-mono text-yellow-400 font-bold">{snap.date}</span>
-                      <span className="text-xs text-gray-500">{snap.rows?.length || 0} agents</span>
+                      <span className="text-sm font-mono text-yellow-400 font-bold">
+                        {snap.date}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {snap.rows?.length || 0} agents
+                      </span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className={`font-mono font-bold text-sm ${snapFinalPL >= 0 ? "text-green-400" : "text-red-400"}`}>
+                      <span
+                        className={`font-mono font-bold text-sm ${snapFinalPL >= 0 ? "text-green-400" : "text-red-400"}`}>
                         {fmt(Math.abs(snapFinalPL))} {snapTag}
                       </span>
-                      <span className="text-gray-600 text-xs">{isOpen ? "▲" : "▼"}</span>
+                      <span className="text-gray-600 text-xs">
+                        {isOpen ? "▲" : "▼"}
+                      </span>
                     </div>
                   </button>
                   {isOpen && (
                     <div className="border-t border-gray-800">
                       <div className="overflow-x-auto">
-                        <table className="w-full border-collapse" style={{ minWidth: "420px" }}>
+                        <table
+                          className="w-full border-collapse"
+                          style={{ minWidth: "420px" }}>
                           <thead>
                             <tr className="bg-gray-800">
                               <th className={`${th} text-center w-8`}>#</th>
@@ -691,63 +823,126 @@ export default function AdminHome() {
                           <tbody>
                             {(snap.rows || []).map((r, j) => (
                               <tr key={j} className="hover:bg-gray-900/40">
-                                <td className={`${td} text-center text-gray-500 text-xs`}>{j + 1}</td>
-                                <td className={`${td} font-medium`}>{r.agentName}</td>
-                                <td className={`${td} text-right font-mono`}>{fmt(r.netGame)}</td>
+                                <td
+                                  className={`${td} text-center text-gray-500 text-xs`}>
+                                  {j + 1}
+                                </td>
+                                <td className={`${td} font-medium`}>
+                                  {r.agentName}
+                                </td>
+                                <td className={`${td} text-right font-mono`}>
+                                  {fmt(r.netGame)}
+                                </td>
                                 <td className={`${td} text-right`}>
-                                  <div className="font-mono">{fmt(r.rawWin + (r.winDiscAmount || 0))}</div>
+                                  <div className="font-mono">
+                                    {fmt(r.rawWin + (r.winDiscAmount || 0))}
+                                  </div>
                                   {r.winDiscApplied && r.winDiscAmount > 0 && (
-                                    <div className="text-xs text-blue-400">W.disc</div>
+                                    <div className="text-xs text-blue-400">
+                                      W.disc
+                                    </div>
                                   )}
                                 </td>
                                 <td className={`${td} text-right`}>
-                                  <div className={`font-mono font-bold ${r.tag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
+                                  <div
+                                    className={`font-mono font-bold ${r.tag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
                                     {fmt(Math.abs(r.pl))}
                                   </div>
                                 </td>
                                 <td className={`${td} text-center`}>
-                                  <span className={`text-xs font-bold px-2 py-0.5 rounded ${r.tag === "BANKER" ? "bg-green-900/50 text-green-400" : "bg-red-900/50 text-red-400"}`}>
+                                  <span
+                                    className={`text-xs font-bold px-2 py-0.5 rounded ${r.tag === "BANKER" ? "bg-green-900/50 text-green-400" : "bg-red-900/50 text-red-400"}`}>
                                     {r.tag}
                                   </span>
                                 </td>
                               </tr>
                             ))}
-                            {((snap.expenseGame ?? 0) !== 0 || (snap.expenseWin ?? 0) !== 0) && (() => {
-                              const sg = snap.expenseGame ?? 0;
-                              const sw = snap.expenseWin ?? 0;
-                              const netPL = sg - sw;
-                              const pos = netPL >= 0;
-                              const label = sg !== 0 && sw !== 0 ? "Expense" : sg !== 0 ? (snap.expenseLabelGame || "GET") : (snap.expenseLabelWin || "LOST");
-                              return (
-                                <tr className="hover:bg-gray-900/40">
-                                  <td className={`${td}`}></td>
-                                  <td className={`${td} text-gray-400 italic`}>{label}</td>
-                                  <td className={`${td} text-right font-mono ${sg !== 0 ? "text-green-400" : ""}`}>{sg !== 0 ? fmt(sg) : ""}</td>
-                                  <td className={`${td} text-right font-mono ${sw !== 0 ? "text-red-400" : ""}`}>{sw !== 0 ? fmt(sw) : ""}</td>
-                                  <td className={`${td} text-right font-mono font-bold ${pos ? "text-green-400" : "text-red-400"}`}>{pos ? `+${fmt(netPL)}` : `−${fmt(Math.abs(netPL))}`}</td>
-                                  <td className={`${td}`}></td>
-                                </tr>
-                              );
-                            })()}
+                            {((snap.expenseGame ?? 0) !== 0 ||
+                              (snap.expenseWin ?? 0) !== 0) &&
+                              (() => {
+                                const sg = snap.expenseGame ?? 0;
+                                const sw = snap.expenseWin ?? 0;
+                                const netPL = sg - sw;
+                                const pos = netPL >= 0;
+                                const label =
+                                  sg !== 0 && sw !== 0
+                                    ? "Expense"
+                                    : sg !== 0
+                                      ? snap.expenseLabelGame || "GET"
+                                      : snap.expenseLabelWin || "LOST";
+                                return (
+                                  <tr className="hover:bg-gray-900/40">
+                                    <td className={`${td}`}></td>
+                                    <td
+                                      className={`${td} text-gray-400 italic`}>
+                                      {label}
+                                    </td>
+                                    <td
+                                      className={`${td} text-right font-mono ${sg !== 0 ? "text-green-400" : ""}`}>
+                                      {sg !== 0 ? fmt(sg) : ""}
+                                    </td>
+                                    <td
+                                      className={`${td} text-right font-mono ${sw !== 0 ? "text-red-400" : ""}`}>
+                                      {sw !== 0 ? fmt(sw) : ""}
+                                    </td>
+                                    <td
+                                      className={`${td} text-right font-mono font-bold ${pos ? "text-green-400" : "text-red-400"}`}>
+                                      {pos
+                                        ? `+${fmt(netPL)}`
+                                        : `−${fmt(Math.abs(netPL))}`}
+                                    </td>
+                                    <td className={`${td}`}></td>
+                                  </tr>
+                                );
+                              })()}
                           </tbody>
                           <tfoot>
                             <tr className="bg-gray-800 border-t-2 border-gray-600 font-bold">
                               <td className={`${td}`}></td>
-                              <td className={`${td} text-xs uppercase tracking-wider text-gray-400`}>Total</td>
-                              <td className={`${td} text-right font-mono`}>{fmt((snap.grandGame ?? 0) + (snap.expenseGame ?? 0))}</td>
-                              <td className={`${td} text-right font-mono`}>{fmt((snap.grandWin ?? 0) + (snap.totalWinDisc ?? 0) + (snap.expenseWin ?? 0))}</td>
-                              <td className={`${td} text-right font-mono font-bold ${snapTag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
+                              <td
+                                className={`${td} text-xs uppercase tracking-wider text-gray-400`}>
+                                Total
+                              </td>
+                              <td className={`${td} text-right font-mono`}>
+                                {fmt(
+                                  (snap.grandGame ?? 0) +
+                                    (snap.expenseGame ?? 0),
+                                )}
+                              </td>
+                              <td className={`${td} text-right font-mono`}>
+                                {fmt(
+                                  (snap.grandWin ?? 0) +
+                                    (snap.totalWinDisc ?? 0) +
+                                    (snap.expenseWin ?? 0),
+                                )}
+                              </td>
+                              <td
+                                className={`${td} text-right font-mono font-bold ${snapTag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
                                 {fmt(Math.abs(snapFinalPL))}
                               </td>
                               <td className={`${td} text-center`}>
-                                <span className={`text-xs font-bold px-2 py-0.5 rounded ${snapTag === "BANKER" ? "bg-green-900/50 text-green-400" : "bg-red-900/50 text-red-400"}`}>
+                                <span
+                                  className={`text-xs font-bold px-2 py-0.5 rounded ${snapTag === "BANKER" ? "bg-green-900/50 text-green-400" : "bg-red-900/50 text-red-400"}`}>
                                   {snapTag}
                                 </span>
                               </td>
                             </tr>
                             <tr className="bg-gray-800">
-                              <td colSpan={6} className="border border-gray-700 px-3 py-1 text-xs text-gray-500 italic">
-                                P/L = {fmt((snap.grandGame ?? 0) + (snap.expenseGame ?? 0))} &minus; {fmt((snap.grandWin ?? 0) + (snap.totalWinDisc ?? 0) + (snap.expenseWin ?? 0))} = {fmt(Math.abs(snapFinalPL))} {snapTag}
+                              <td
+                                colSpan={6}
+                                className="border border-gray-700 px-3 py-1 text-xs text-gray-500 italic">
+                                P/L ={" "}
+                                {fmt(
+                                  (snap.grandGame ?? 0) +
+                                    (snap.expenseGame ?? 0),
+                                )}{" "}
+                                &minus;{" "}
+                                {fmt(
+                                  (snap.grandWin ?? 0) +
+                                    (snap.totalWinDisc ?? 0) +
+                                    (snap.expenseWin ?? 0),
+                                )}{" "}
+                                = {fmt(Math.abs(snapFinalPL))} {snapTag}
                               </td>
                             </tr>
                           </tfoot>
@@ -766,14 +961,20 @@ export default function AdminHome() {
       {showClearModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
           <div className="bg-gray-900 border border-red-800 rounded-2xl p-6 w-full max-w-sm mx-4 space-y-4">
-            <h2 className="text-base font-bold text-red-400 uppercase tracking-wider">Clear All Data</h2>
+            <h2 className="text-base font-bold text-red-400 uppercase tracking-wider">
+              Clear All Data
+            </h2>
             <p className="text-sm text-gray-400">
               This will permanently delete{" "}
-              <span className="text-white font-bold">all game entries</span> and reset expense to 0.
-              This cannot be undone.
+              <span className="text-white font-bold">all game entries</span> and
+              reset expense to 0. This cannot be undone.
             </p>
             <p className="text-xs text-gray-500">
-              Type <span className="text-red-300 font-mono font-bold">{CLEAR_KEYWORD}</span> to confirm:
+              Type{" "}
+              <span className="text-red-300 font-mono font-bold">
+                {CLEAR_KEYWORD}
+              </span>{" "}
+              to confirm:
             </p>
             <input
               type="text"
@@ -785,7 +986,10 @@ export default function AdminHome() {
             />
             <div className="flex gap-3">
               <button
-                onClick={() => { setShowClearModal(false); setClearText(""); }}
+                onClick={() => {
+                  setShowClearModal(false);
+                  setClearText("");
+                }}
                 className="flex-1 py-2 rounded-lg text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 transition">
                 Cancel
               </button>
