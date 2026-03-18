@@ -39,29 +39,22 @@ function printSummary(
 
   const netColor = netTag === "BANKER" ? "#166534" : "#991b1b";
 
-  const expenseGameRow =
-    expenseGame !== 0
-      ? `<tr>
+  const expenseRow = (() => {
+    if (expenseGame === 0 && expenseWin === 0) return "";
+    const netPL = expenseGame - expenseWin;
+    const pos = netPL >= 0;
+    const label = expenseGame !== 0 && expenseWin !== 0 ? "Expense" : expenseGame !== 0 ? expenseLabelGame : expenseLabelWin;
+    const plColor = pos ? "#166534" : "#991b1b";
+    const plText = pos ? `+${fmt(netPL)}` : `&#8722;${fmt(Math.abs(netPL))}`;
+    return `<tr>
       <td style="border:1px solid #999;padding:6px 10px;"></td>
-      <td style="border:1px solid #999;padding:6px 10px;color:#666;font-style:italic;">${expenseLabelGame}</td>
-      <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#991b1b;">${fmt(expenseGame)}</td>
+      <td style="border:1px solid #999;padding:6px 10px;color:#666;font-style:italic;">${label}</td>
+      <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#166534;">${expenseGame !== 0 ? fmt(expenseGame) : ""}</td>
+      <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#991b1b;">${expenseWin !== 0 ? fmt(expenseWin) : ""}</td>
+      <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;font-weight:bold;color:${plColor};">${plText}</td>
       <td style="border:1px solid #999;padding:6px 10px;"></td>
-      <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;font-weight:bold;color:#166534;">+${fmt(expenseGame)}</td>
-      <td style="border:1px solid #999;padding:6px 10px;"></td>
-    </tr>`
-      : "";
-
-  const expenseWinRow =
-    expenseWin !== 0
-      ? `<tr>
-      <td style="border:1px solid #999;padding:6px 10px;"></td>
-      <td style="border:1px solid #999;padding:6px 10px;color:#666;font-style:italic;">${expenseLabelWin}</td>
-      <td style="border:1px solid #999;padding:6px 10px;"></td>
-      <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#991b1b;">${fmt(expenseWin)}</td>
-      <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;font-weight:bold;color:#991b1b;">−${fmt(expenseWin)}</td>
-      <td style="border:1px solid #999;padding:6px 10px;"></td>
-    </tr>`
-      : "";
+    </tr>`;
+  })();
 
   const html = `<!DOCTYPE html>
 <html>
@@ -94,7 +87,7 @@ function printSummary(
         <th style="text-align:center;">Tag</th>
       </tr>
     </thead>
-    <tbody>${dataRows}${expenseGameRow}${expenseWinRow}</tbody>
+    <tbody>${dataRows}${expenseRow}</tbody>
     <tfoot>
       <tr style="font-weight:bold;background:#f9fafb;border-top:2px solid #666;">
         <td></td>
@@ -317,29 +310,22 @@ export default function AdminHome() {
       })
       .join("");
 
-    const expenseGameRowHtml =
-      expenseGame !== 0
-        ? `<tr>
+    const expenseRowHtml = (() => {
+      if (expenseGame === 0 && expenseWin === 0) return "";
+      const netPL = expenseGame - expenseWin;
+      const pos = netPL >= 0;
+      const label = expenseGame !== 0 && expenseWin !== 0 ? "Expense" : expenseGame !== 0 ? expenseLabelGame : expenseLabelWin;
+      const plColor = pos ? "#166534" : "#991b1b";
+      const plText = pos ? `+${fmt(netPL)}` : `&#8722;${fmt(Math.abs(netPL))}`;
+      return `<tr>
         <td style="border:1px solid #999;padding:6px 10px;"></td>
-        <td style="border:1px solid #999;padding:6px 10px;color:#666;font-style:italic;">${expenseLabelGame}</td>
-        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#991b1b;">${fmt(expenseGame)}</td>
+        <td style="border:1px solid #999;padding:6px 10px;color:#666;font-style:italic;">${label}</td>
+        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#166534;">${expenseGame !== 0 ? fmt(expenseGame) : ""}</td>
+        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#991b1b;">${expenseWin !== 0 ? fmt(expenseWin) : ""}</td>
+        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;font-weight:bold;color:${plColor};">${plText}</td>
         <td style="border:1px solid #999;padding:6px 10px;"></td>
-        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;font-weight:bold;color:#166534;">+${fmt(expenseGame)}</td>
-        <td style="border:1px solid #999;padding:6px 10px;"></td>
-      </tr>`
-        : "";
-
-    const expenseWinRowHtml =
-      expenseWin !== 0
-        ? `<tr>
-        <td style="border:1px solid #999;padding:6px 10px;"></td>
-        <td style="border:1px solid #999;padding:6px 10px;color:#666;font-style:italic;">${expenseLabelWin}</td>
-        <td style="border:1px solid #999;padding:6px 10px;"></td>
-        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;color:#991b1b;">${fmt(expenseWin)}</td>
-        <td style="border:1px solid #999;padding:6px 10px;text-align:right;font-family:monospace;font-weight:bold;color:#991b1b;">−${fmt(expenseWin)}</td>
-        <td style="border:1px solid #999;padding:6px 10px;"></td>
-      </tr>`
-        : "";
+      </tr>`;
+    })();
 
     const el = document.createElement("div");
     el.style.cssText =
@@ -358,7 +344,7 @@ export default function AdminHome() {
             <th style="border:1px solid #999;padding:6px 10px;font-size:12px;text-align:center;text-transform:uppercase;letter-spacing:.05em;">Tag</th>
           </tr>
         </thead>
-        <tbody>${dataRows}${expenseGameRowHtml}${expenseWinRowHtml}</tbody>
+        <tbody>${dataRows}${expenseRowHtml}</tbody>
         <tfoot>
           <tr style="background:#f9fafb;border-top:2px solid #666;font-weight:bold;">
             <td style="border:1px solid #999;padding:6px 10px;"></td>
@@ -487,26 +473,21 @@ export default function AdminHome() {
                     </td>
                   </tr>
                 ))}
-                {expenseGame !== 0 && (
-                  <tr className="hover:bg-gray-900/40">
-                    <td className={`${td}`}></td>
-                    <td className={`${td} text-gray-400 italic`}>{expenseLabelGame}</td>
-                    <td className={`${td} text-right font-mono text-red-400`}>{fmt(expenseGame)}</td>
-                    <td className={`${td}`}></td>
-                    <td className={`${td} text-right font-mono font-bold text-green-400`}>+{fmt(expenseGame)}</td>
-                    <td className={`${td}`}></td>
-                  </tr>
-                )}
-                {expenseWin !== 0 && (
-                  <tr className="hover:bg-gray-900/40">
-                    <td className={`${td}`}></td>
-                    <td className={`${td} text-gray-400 italic`}>{expenseLabelWin}</td>
-                    <td className={`${td}`}></td>
-                    <td className={`${td} text-right font-mono text-red-400`}>{fmt(expenseWin)}</td>
-                    <td className={`${td} text-right font-mono font-bold text-red-400`}>−{fmt(expenseWin)}</td>
-                    <td className={`${td}`}></td>
-                  </tr>
-                )}
+                {(expenseGame !== 0 || expenseWin !== 0) && (() => {
+                  const netPL = expenseGame - expenseWin;
+                  const pos = netPL >= 0;
+                  const label = expenseGame !== 0 && expenseWin !== 0 ? "Expense" : expenseGame !== 0 ? expenseLabelGame : expenseLabelWin;
+                  return (
+                    <tr className="hover:bg-gray-900/40">
+                      <td className={`${td}`}></td>
+                      <td className={`${td} text-gray-400 italic`}>{label}</td>
+                      <td className={`${td} text-right font-mono ${expenseGame !== 0 ? "text-green-400" : ""}`}>{expenseGame !== 0 ? fmt(expenseGame) : ""}</td>
+                      <td className={`${td} text-right font-mono ${expenseWin !== 0 ? "text-red-400" : ""}`}>{expenseWin !== 0 ? fmt(expenseWin) : ""}</td>
+                      <td className={`${td} text-right font-mono font-bold ${pos ? "text-green-400" : "text-red-400"}`}>{pos ? `+${fmt(netPL)}` : `−${fmt(Math.abs(netPL))}`}</td>
+                      <td className={`${td}`}></td>
+                    </tr>
+                  );
+                })()}
               </tbody>
               <tfoot>
                 <tr className="bg-gray-900 border-t-2 border-gray-600 font-bold">
@@ -731,26 +712,23 @@ export default function AdminHome() {
                                 </td>
                               </tr>
                             ))}
-                            {(snap.expenseGame ?? 0) !== 0 && (
-                              <tr className="hover:bg-gray-900/40">
-                                <td className={`${td}`}></td>
-                                <td className={`${td} text-gray-400 italic`}>{snap.expenseLabelGame || "Expense (Game)"}</td>
-                                <td className={`${td} text-right font-mono text-red-400`}>{fmt(snap.expenseGame)}</td>
-                                <td className={`${td}`}></td>
-                                <td className={`${td} text-right font-mono font-bold text-green-400`}>+{fmt(snap.expenseGame)}</td>
-                                <td className={`${td}`}></td>
-                              </tr>
-                            )}
-                            {(snap.expenseWin ?? 0) !== 0 && (
-                              <tr className="hover:bg-gray-900/40">
-                                <td className={`${td}`}></td>
-                                <td className={`${td} text-gray-400 italic`}>{snap.expenseLabelWin || "Expense (Win)"}</td>
-                                <td className={`${td}`}></td>
-                                <td className={`${td} text-right font-mono text-red-400`}>{fmt(snap.expenseWin)}</td>
-                                <td className={`${td} text-right font-mono font-bold text-red-400`}>−{fmt(snap.expenseWin)}</td>
-                                <td className={`${td}`}></td>
-                              </tr>
-                            )}
+                            {((snap.expenseGame ?? 0) !== 0 || (snap.expenseWin ?? 0) !== 0) && (() => {
+                              const sg = snap.expenseGame ?? 0;
+                              const sw = snap.expenseWin ?? 0;
+                              const netPL = sg - sw;
+                              const pos = netPL >= 0;
+                              const label = sg !== 0 && sw !== 0 ? "Expense" : sg !== 0 ? (snap.expenseLabelGame || "GET") : (snap.expenseLabelWin || "LOST");
+                              return (
+                                <tr className="hover:bg-gray-900/40">
+                                  <td className={`${td}`}></td>
+                                  <td className={`${td} text-gray-400 italic`}>{label}</td>
+                                  <td className={`${td} text-right font-mono ${sg !== 0 ? "text-green-400" : ""}`}>{sg !== 0 ? fmt(sg) : ""}</td>
+                                  <td className={`${td} text-right font-mono ${sw !== 0 ? "text-red-400" : ""}`}>{sw !== 0 ? fmt(sw) : ""}</td>
+                                  <td className={`${td} text-right font-mono font-bold ${pos ? "text-green-400" : "text-red-400"}`}>{pos ? `+${fmt(netPL)}` : `−${fmt(Math.abs(netPL))}`}</td>
+                                  <td className={`${td}`}></td>
+                                </tr>
+                              );
+                            })()}
                           </tbody>
                           <tfoot>
                             <tr className="bg-gray-800 border-t-2 border-gray-600 font-bold">
