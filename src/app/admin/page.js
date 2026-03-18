@@ -440,7 +440,7 @@ export default function AdminHome() {
   const td = "border border-gray-700 px-3 py-2 text-sm";
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-lg font-bold text-yellow-400 uppercase tracking-widest">
           Summary
