@@ -248,9 +248,9 @@ export default function VisitorPage() {
   const [search, setSearch] = useState("");
   const [previousPL, setPreviousPL] = useState(0);
   const [expenseWin, setExpenseWin] = useState(0);
-  const [expenseLabelWin, setExpenseLabelWin] = useState("Expense (Win)");
+  const [expenseLabelWin, setExpenseLabelWin] = useState("LOST");
   const [expenseGame, setExpenseGame] = useState(0);
-  const [expenseLabelGame, setExpenseLabelGame] = useState("Expense (Game)");
+  const [expenseLabelGame, setExpenseLabelGame] = useState("GET");
 
   async function load() {
     try {
@@ -270,9 +270,9 @@ export default function VisitorPage() {
       setData(gameJson.data || []);
       setPreviousPL(histJson.totalPL ?? 0);
       setExpenseWin(expenseJson.winAmount ?? 0);
-      setExpenseLabelWin(expenseJson.winLabel || "Expense (Win)");
+      setExpenseLabelWin(expenseJson.winLabel || "LOST");
       setExpenseGame(expenseJson.gameAmount ?? 0);
-      setExpenseLabelGame(expenseJson.gameLabel || "Expense (Game)");
+      setExpenseLabelGame(expenseJson.gameLabel || "GET");
       const map = {};
       (agentJson.agents || []).forEach((a) => {
         map[a.agentId] = a;

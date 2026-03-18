@@ -131,9 +131,9 @@ export default function AdminHome() {
   const [summaryHistory, setSummaryHistory] = useState([]);
   const [expandedHistory, setExpandedHistory] = useState(null);
   const [expenseWin, setExpenseWin] = useState(0);
-  const [expenseLabelWin, setExpenseLabelWin] = useState("Expense (Win)");
+  const [expenseLabelWin, setExpenseLabelWin] = useState("LOST");
   const [expenseGame, setExpenseGame] = useState(0);
-  const [expenseLabelGame, setExpenseLabelGame] = useState("Expense (Game)");
+  const [expenseLabelGame, setExpenseLabelGame] = useState("GET");
   const [editingExpense, setEditingExpense] = useState(false);
   const [expenseWinInput, setExpenseWinInput] = useState("");
   const [expenseLabelWinInput, setExpenseLabelWinInput] = useState("");
@@ -191,7 +191,7 @@ export default function AdminHome() {
     await fetch("/api/expense", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ winAmount: 0, winLabel: expenseLabelWin, gameAmount: 0, gameLabel: expenseLabelGame }),
+      body: JSON.stringify({ winAmount: 0, winLabel: "LOST", gameAmount: 0, gameLabel: "GET" }),
     });
     setPreviousPL((prev) => (prev ?? 0) + adjustedGrandPL);
     setSummaryHistory((prev) => [
@@ -230,9 +230,9 @@ export default function AdminHome() {
         setPreviousPL(histJson.totalPL ?? 0);
         setSummaryHistory(summaryJson.records || []);
         setExpenseWin(expenseJson.winAmount ?? 0);
-        setExpenseLabelWin(expenseJson.winLabel || "Expense (Win)");
+        setExpenseLabelWin(expenseJson.winLabel || "LOST");
         setExpenseGame(expenseJson.gameAmount ?? 0);
-        setExpenseLabelGame(expenseJson.gameLabel || "Expense (Game)");
+        setExpenseLabelGame(expenseJson.gameLabel || "GET");
         const map = {};
         (agentJson.agents || []).forEach((a) => {
           map[a.agentId] = a;
@@ -589,7 +589,7 @@ export default function AdminHome() {
         </div>
         {editingExpense ? (
           <div className="space-y-3">
-            <div className="text-xs text-gray-500 uppercase tracking-wide">Add to Game</div>
+            <div className="text-xs text-gray-500 uppercase tracking-wide">GET (Add to Game)</div>
             <input
               type="text"
               value={expenseLabelGameInput}
@@ -605,7 +605,7 @@ export default function AdminHome() {
               placeholder="0"
               className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none"
             />
-            <div className="text-xs text-gray-500 uppercase tracking-wide pt-1">Add to Win</div>
+            <div className="text-xs text-gray-500 uppercase tracking-wide pt-1">LOST (Add to Win)</div>
             <input
               type="text"
               value={expenseLabelWinInput}
@@ -631,9 +631,9 @@ export default function AdminHome() {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                       winAmount: wAmt,
-                      winLabel: expenseLabelWinInput || "Expense (Win)",
+                      winLabel: expenseLabelWinInput || "LOST",
                       gameAmount: gAmt,
-                      gameLabel: expenseLabelGameInput || "Expense (Game)",
+                      gameLabel: expenseLabelGameInput || "GET",
                     }),
                   });
                   setExpenseWin(wAmt);
