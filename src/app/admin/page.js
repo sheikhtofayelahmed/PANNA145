@@ -618,9 +618,9 @@ export default function AdminHome() {
                     }),
                   });
                   setExpenseWin(wAmt);
-                  setExpenseLabelWin(expenseLabelWinInput || "Expense (Win)");
+                  setExpenseLabelWin(expenseLabelWinInput || "LOST");
                   setExpenseGame(gAmt);
-                  setExpenseLabelGame(expenseLabelGameInput || "Expense (Game)");
+                  setExpenseLabelGame(expenseLabelGameInput || "GET");
                   setEditingExpense(false);
                 }}
                 className="flex-1 py-1.5 rounded-lg text-xs bg-white text-black font-bold hover:bg-gray-200 transition">
