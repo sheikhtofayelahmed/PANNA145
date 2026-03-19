@@ -32,7 +32,8 @@ export default function RootLayout({ children }) {
             href="/results"
             className="text-xs px-4 py-1.5 rounded-full text-gray-400 hover:bg-gray-800 hover:text-white transition font-medium tracking-wide">
             Results
-          </Link>
+          </Link>{" "}
+          <span className="text-gray-700">|</span>
           <Link
             href="/visitor"
             className="text-xs px-4 py-1.5 rounded-full text-gray-400 hover:bg-gray-800 hover:text-white transition font-medium tracking-wide">
