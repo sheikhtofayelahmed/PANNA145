@@ -136,15 +136,13 @@ export default function AdminHome() {
   const [previousPL, setPreviousPL] = useState(null);
   const [summaryHistory, setSummaryHistory] = useState([]);
   const [expandedHistory, setExpandedHistory] = useState(null);
-  const [expenseWin, setExpenseWin] = useState(0);
+  const [expenseEntries, setExpenseEntries] = useState([]);
   const [expenseLabelWin, setExpenseLabelWin] = useState("LOST");
-  const [expenseGame, setExpenseGame] = useState(0);
   const [expenseLabelGame, setExpenseLabelGame] = useState("GET");
-  const [editingExpense, setEditingExpense] = useState(false);
-  const [expenseWinInput, setExpenseWinInput] = useState("");
-  const [expenseLabelWinInput, setExpenseLabelWinInput] = useState("");
-  const [expenseGameInput, setExpenseGameInput] = useState("");
-  const [expenseLabelGameInput, setExpenseLabelGameInput] = useState("");
+  const [addExpenseType, setAddExpenseType] = useState("game");
+  const [addExpenseAmount, setAddExpenseAmount] = useState("");
+  const [addExpenseNote, setAddExpenseNote] = useState("");
+  const [addExpenseSaving, setAddExpenseSaving] = useState(false);
   const tableRef = useRef(null);
 
   const CLEAR_KEYWORD = "CLEAR ALL";
@@ -195,16 +193,11 @@ export default function AdminHome() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clearAll: true }),
     });
-    // Reset expense to 0
+    // Clear all expense entries
     await fetch("/api/expense", {
-      method: "PUT",
+      method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        winAmount: 0,
-        winLabel: "LOST",
-        gameAmount: 0,
-        gameLabel: "GET",
-      }),
+      body: JSON.stringify({ clearAll: true }),
     });
     setPreviousPL((prev) => (prev ?? 0) + adjustedGrandPL);
     setSummaryHistory((prev) => [
@@ -227,8 +220,7 @@ export default function AdminHome() {
       ...prev,
     ]);
     setData([]);
-    setExpenseWin(0);
-    setExpenseGame(0);
+    setExpenseEntries([]);
     setClearing(false);
   }
 
@@ -251,9 +243,8 @@ export default function AdminHome() {
         setData(gameJson.data || []);
         setPreviousPL(histJson.totalPL ?? 0);
         setSummaryHistory(summaryJson.records || []);
-        setExpenseWin(expenseJson.winAmount ?? 0);
+        setExpenseEntries(expenseJson.entries || []);
         setExpenseLabelWin(expenseJson.winLabel || "LOST");
-        setExpenseGame(expenseJson.gameAmount ?? 0);
         setExpenseLabelGame(expenseJson.gameLabel || "GET");
         const map = {};
         (agentJson.agents || []).forEach((a) => {
@@ -312,6 +303,8 @@ export default function AdminHome() {
   const grandPL = rows.reduce((s, r) => s + r.pl, 0);
   const grandTag = grandPL >= 0 ? "BANKER" : "AGENT";
   const totalWinDisc = rows.reduce((s, r) => s + r.winDiscAmount, 0);
+  const expenseGame = expenseEntries.filter((e) => e.type === "game").reduce((s, e) => s + e.amount, 0);
+  const expenseWin = expenseEntries.filter((e) => e.type === "win").reduce((s, e) => s + e.amount, 0);
   const netExp = expenseGame - expenseWin;
   const totGameDisplay = grandGame + (netExp > 0 ? netExp : 0);
   const totWinDisplay = grandWin + totalWinDisc + (netExp < 0 ? -netExp : 0);
@@ -659,117 +652,113 @@ export default function AdminHome() {
         </div>
       )}
 
-      {/* Expense edit */}
-      <div className="mt-4 bg-gray-900 border border-gray-700 rounded-xl p-4">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-xs text-gray-500 uppercase tracking-wider">
-            Expense
-          </span>
-          {!editingExpense && (
-            <button
-              onClick={() => {
-                setExpenseWinInput(String(expenseWin));
-                setExpenseLabelWinInput(expenseLabelWin);
-                setExpenseGameInput(String(expenseGame));
-                setExpenseLabelGameInput(expenseLabelGame);
-                setEditingExpense(true);
-              }}
-              className="text-xs text-gray-400 hover:text-white border border-gray-700 rounded px-2 py-0.5 transition">
-              Edit
-            </button>
-          )}
-        </div>
-        {editingExpense ? (
-          <div className="space-y-3">
-            <div className="text-xs text-gray-500 uppercase tracking-wide">
-              GET (Add to Game)
-            </div>
-            <input
-              type="text"
-              value={expenseLabelGameInput}
-              onChange={(e) => setExpenseLabelGameInput(e.target.value)}
-              placeholder="Label"
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none"
-            />
-            <input
-              type="number"
-              min="0"
-              value={expenseGameInput}
-              onChange={(e) => setExpenseGameInput(e.target.value)}
-              placeholder="0"
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none"
-            />
-            <div className="text-xs text-gray-500 uppercase tracking-wide pt-1">
-              LOST (Add to Win)
-            </div>
-            <input
-              type="text"
-              value={expenseLabelWinInput}
-              onChange={(e) => setExpenseLabelWinInput(e.target.value)}
-              placeholder="Label"
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none"
-            />
-            <input
-              type="number"
-              min="0"
-              value={expenseWinInput}
-              onChange={(e) => setExpenseWinInput(e.target.value)}
-              placeholder="0"
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none"
-            />
-            <div className="flex gap-2 pt-1">
-              <button
-                onClick={async () => {
-                  const wAmt = Number(expenseWinInput || 0);
-                  const gAmt = Number(expenseGameInput || 0);
-                  await fetch("/api/expense", {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      winAmount: wAmt,
-                      winLabel: expenseLabelWinInput || "LOST",
-                      gameAmount: gAmt,
-                      gameLabel: expenseLabelGameInput || "GET",
-                    }),
-                  });
-                  setExpenseWin(wAmt);
-                  setExpenseLabelWin(expenseLabelWinInput || "LOST");
-                  setExpenseGame(gAmt);
-                  setExpenseLabelGame(expenseLabelGameInput || "GET");
-                  setEditingExpense(false);
-                }}
-                className="flex-1 py-1.5 rounded-lg text-xs bg-white text-black font-bold hover:bg-gray-200 transition">
-                Save
-              </button>
-              <button
-                onClick={() => setEditingExpense(false)}
-                className="flex-1 py-1.5 rounded-lg text-xs bg-gray-800 text-gray-300 hover:bg-gray-700 transition">
-                Cancel
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-1 text-sm">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-500 text-xs">GET</span>
-              <span className="text-gray-400 italic text-xs">
-                {expenseLabelGame}
-              </span>
-              <span className="font-mono font-bold text-green-400">
-                {expenseGame !== 0 ? `+${fmt(expenseGame)}` : "—"}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-500 text-xs">LOST</span>
-              <span className="text-gray-400 italic text-xs">
-                {expenseLabelWin}
-              </span>
-              <span className="font-mono font-bold text-red-400">
-                {expenseWin !== 0 ? `-${fmt(expenseWin)}` : "—"}
-              </span>
-            </div>
+      {/* Expense — multi-entry */}
+      <div className="mt-4 bg-gray-900 border border-gray-700 rounded-xl p-4 space-y-3">
+        <span className="text-xs text-gray-500 uppercase tracking-wider">Expense</span>
+
+        {/* GET entries */}
+        {expenseEntries.filter((e) => e.type === "game").length > 0 && (
+          <div className="space-y-1">
+            <div className="text-xs text-gray-600 uppercase tracking-wide">GET — Added to Game</div>
+            {expenseEntries.filter((e) => e.type === "game").map((e) => (
+              <div key={e.id} className="flex items-center justify-between text-sm bg-gray-800 rounded-lg px-3 py-1.5">
+                <span className="text-gray-400 text-xs">{e.note || expenseLabelGame}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-green-400 font-mono font-semibold">+{fmt(e.amount)}</span>
+                  <button
+                    onClick={async () => {
+                      await fetch("/api/expense", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: e.id }) });
+                      setExpenseEntries((prev) => prev.filter((x) => x.id !== e.id));
+                    }}
+                    className="text-gray-600 hover:text-red-400 transition text-base leading-none">×</button>
+                </div>
+              </div>
+            ))}
+            <div className="text-right text-xs text-green-400 font-mono font-bold pr-1">Total GET: +{fmt(expenseGame)}</div>
           </div>
         )}
+
+        {/* LOST entries */}
+        {expenseEntries.filter((e) => e.type === "win").length > 0 && (
+          <div className="space-y-1">
+            <div className="text-xs text-gray-600 uppercase tracking-wide">LOST — Added to Win</div>
+            {expenseEntries.filter((e) => e.type === "win").map((e) => (
+              <div key={e.id} className="flex items-center justify-between text-sm bg-gray-800 rounded-lg px-3 py-1.5">
+                <span className="text-gray-400 text-xs">{e.note || expenseLabelWin}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-red-400 font-mono font-semibold">−{fmt(e.amount)}</span>
+                  <button
+                    onClick={async () => {
+                      await fetch("/api/expense", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: e.id }) });
+                      setExpenseEntries((prev) => prev.filter((x) => x.id !== e.id));
+                    }}
+                    className="text-gray-600 hover:text-red-400 transition text-base leading-none">×</button>
+                </div>
+              </div>
+            ))}
+            <div className="text-right text-xs text-red-400 font-mono font-bold pr-1">Total LOST: −{fmt(expenseWin)}</div>
+          </div>
+        )}
+
+        {expenseEntries.length === 0 && (
+          <p className="text-xs text-gray-700 text-center py-1">No entries yet</p>
+        )}
+
+        {/* Add entry form */}
+        <div className="border-t border-gray-800 pt-3 space-y-2">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setAddExpenseType("game")}
+              className={`flex-1 py-1.5 text-xs rounded-lg font-semibold transition ${addExpenseType === "game" ? "bg-green-900 text-green-300 border border-green-700" : "bg-gray-800 text-gray-500 hover:text-gray-300"}`}>
+              GET
+            </button>
+            <button
+              onClick={() => setAddExpenseType("win")}
+              className={`flex-1 py-1.5 text-xs rounded-lg font-semibold transition ${addExpenseType === "win" ? "bg-red-900 text-red-300 border border-red-700" : "bg-gray-800 text-gray-500 hover:text-gray-300"}`}>
+              LOST
+            </button>
+          </div>
+          <input
+            type="number"
+            min="1"
+            value={addExpenseAmount}
+            onChange={(e) => setAddExpenseAmount(e.target.value)}
+            placeholder="Amount"
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none"
+          />
+          <input
+            type="text"
+            value={addExpenseNote}
+            onChange={(e) => setAddExpenseNote(e.target.value)}
+            placeholder="Note (optional)"
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none"
+          />
+          <button
+            disabled={addExpenseSaving || !addExpenseAmount}
+            onClick={async () => {
+              if (!addExpenseAmount) return;
+              setAddExpenseSaving(true);
+              try {
+                const res = await fetch("/api/expense", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ type: addExpenseType, amount: Number(addExpenseAmount), note: addExpenseNote }),
+                });
+                if (res.ok) {
+                  const updated = await fetch("/api/expense");
+                  const json = await updated.json();
+                  setExpenseEntries(json.entries || []);
+                  setAddExpenseAmount("");
+                  setAddExpenseNote("");
+                }
+              } finally {
+                setAddExpenseSaving(false);
+              }
+            }}
+            className="w-full py-2 text-xs bg-white text-black font-bold rounded-lg hover:bg-gray-200 disabled:opacity-50 transition">
+            {addExpenseSaving ? "Adding..." : `Add ${addExpenseType === "game" ? "GET" : "LOST"}`}
+          </button>
+        </div>
       </div>
 
       {/* Past Summaries */}
