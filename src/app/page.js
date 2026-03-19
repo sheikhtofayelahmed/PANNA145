@@ -68,9 +68,14 @@ export default function ModeratorLogin() {
           </button>
         </form>
 
-        <p className="text-center text-xs text-gray-600 mt-6">
-          <Link href="/admin/login" className="hover:text-gray-400 transition">Admin →</Link>
-        </p>
+        <div className="flex justify-between items-center mt-6">
+          <Link href="/results" className="text-xs text-yellow-600 hover:text-yellow-400 transition font-semibold">
+            📊 Results
+          </Link>
+          <Link href="/admin/login" className="text-xs text-gray-600 hover:text-gray-400 transition">
+            Admin →
+          </Link>
+        </div>
       </div>
     </div>
   );
