@@ -13,7 +13,12 @@
       "Bash(node -e \"require\\(''canvas''\\)\")",
       "Bash(npm install html2canvas --save)",
       "Bash(npm install html2canvas)",
-      "Bash(git -C \"D:/PANNA145\" push --force origin main)"
+      "Bash(git -C \"D:/PANNA145\" push --force origin main)",
+      "WebFetch(domain:dpboss.boston)",
+      "Bash(git -C \"D:/PANNA145\" add pages/api/dpboss-result.js src/app/results/page.js src/app/page.js)",
+      "Bash(git -C:*)",
+      "Bash(\"D:/PANNA145/scraper/index.js\")",
+      "Bash(\"D:/PANNA145/scraper/package.json\")"
     ]
   }
 }

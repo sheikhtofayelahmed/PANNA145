@@ -2,13 +2,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 
-const NAV = [
-  { href: "/visitor", label: "Visitor" },
-  { href: "/moderator", label: "Moderator" },
-  { href: "/calculator", label: "Calc" },
-  { href: "/admin", label: "Admin" },
-];
-
 const POLL_INTERVAL = 5000;
 
 const WATCHED_MARKETS = [
@@ -95,25 +88,24 @@ export default function ResultsPage() {
         <div>
           <h1 className="text-lg font-bold text-yellow-400">DP Boss Results</h1>
           <p className="text-xs text-gray-600 mt-0.5">
-            {loading ? "Loading..." : fetchedAt ? `Updated ${timeSince(fetchedAt)}` : ""}
+            {loading
+              ? "Loading..."
+              : fetchedAt
+                ? `Updated ${timeSince(fetchedAt)}`
+                : ""}
           </p>
         </div>
       </div>
 
       {/* Nav */}
-      <div className="flex gap-2 flex-wrap mb-5">
-        {NAV.map((n) => (
-          <Link key={n.href} href={n.href}
-            className="px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-xs text-gray-300 font-semibold hover:bg-gray-700 hover:text-white transition">
-            {n.label}
-          </Link>
-        ))}
-      </div>
 
       {/* Error */}
       {error && (
         <p className="text-center text-red-400 text-sm py-3 bg-red-900/20 rounded-lg mb-4">
-          {error} — <button onClick={fetchResults} className="underline">retry</button>
+          {error} —{" "}
+          <button onClick={fetchResults} className="underline">
+            retry
+          </button>
         </p>
       )}
 
@@ -124,24 +116,36 @@ export default function ResultsPage() {
           const isNew = market && newNames.has(market.name);
 
           return (
-            <div key={watchName}
+            <div
+              key={watchName}
               className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-all duration-500 ${
-                isNew ? "bg-green-900/40 border-green-500" : "bg-gray-900 border-gray-800"
+                isNew
+                  ? "bg-green-900/40 border-green-500"
+                  : "bg-gray-900 border-gray-800"
               }`}>
               <div>
                 <div className="font-bold text-sm text-white">
                   {watchName}
                   {isNew && (
-                    <span className="ml-2 text-xs font-normal text-green-400 animate-pulse">NEW</span>
+                    <span className="ml-2 text-xs font-normal text-green-400 animate-pulse">
+                      NEW
+                    </span>
                   )}
                 </div>
                 {market?.time && (
-                  <div className="text-xs text-gray-600 mt-0.5">{market.time}</div>
+                  <div className="text-xs text-gray-600 mt-0.5">
+                    {market.time}
+                  </div>
                 )}
               </div>
-              <div className={`font-mono font-bold text-xl ml-4 shrink-0 ${
-                isNew ? "text-green-300" : market?.result ? "text-yellow-400" : "text-gray-700"
-              }`}>
+              <div
+                className={`font-mono font-bold text-xl ml-4 shrink-0 ${
+                  isNew
+                    ? "text-green-300"
+                    : market?.result
+                      ? "text-yellow-400"
+                      : "text-gray-700"
+                }`}>
                 {market?.result || "—"}
               </div>
             </div>
