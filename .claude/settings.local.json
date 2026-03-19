@@ -12,7 +12,8 @@
       "Bash(node extractapis.js)",
       "Bash(node -e \"require\\(''canvas''\\)\")",
       "Bash(npm install html2canvas --save)",
-      "Bash(npm install html2canvas)"
+      "Bash(npm install html2canvas)",
+      "Bash(git -C \"D:/PANNA145\" push --force origin main)"
     ]
   }
 }
