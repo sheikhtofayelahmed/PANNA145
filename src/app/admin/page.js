@@ -624,15 +624,7 @@ export default function AdminHome() {
             {expenseEntries.filter((e) => e.type === "game").map((e) => (
               <div key={e.id} className="flex items-center justify-between text-sm bg-gray-800 rounded-lg px-3 py-1.5">
                 <span className="text-gray-400 text-xs">{e.note || expenseLabelGame}</span>
-                <div className="flex items-center gap-3">
-                  <span className="text-green-400 font-mono font-semibold">+{fmt(e.amount)}</span>
-                  <button
-                    onClick={async () => {
-                      await fetch("/api/expense", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: e.id }) });
-                      setExpenseEntries((prev) => prev.filter((x) => x.id !== e.id));
-                    }}
-                    className="text-gray-600 hover:text-red-400 transition text-base leading-none">×</button>
-                </div>
+                <span className="text-green-400 font-mono font-semibold">+{fmt(e.amount)}</span>
               </div>
             ))}
             <div className="text-right text-xs text-green-400 font-mono font-bold pr-1">Total GET: +{fmt(expenseGame)}</div>
@@ -646,15 +638,7 @@ export default function AdminHome() {
             {expenseEntries.filter((e) => e.type === "win").map((e) => (
               <div key={e.id} className="flex items-center justify-between text-sm bg-gray-800 rounded-lg px-3 py-1.5">
                 <span className="text-gray-400 text-xs">{e.note || expenseLabelWin}</span>
-                <div className="flex items-center gap-3">
-                  <span className="text-red-400 font-mono font-semibold">−{fmt(e.amount)}</span>
-                  <button
-                    onClick={async () => {
-                      await fetch("/api/expense", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: e.id }) });
-                      setExpenseEntries((prev) => prev.filter((x) => x.id !== e.id));
-                    }}
-                    className="text-gray-600 hover:text-red-400 transition text-base leading-none">×</button>
-                </div>
+                <span className="text-red-400 font-mono font-semibold">−{fmt(e.amount)}</span>
               </div>
             ))}
             <div className="text-right text-xs text-red-400 font-mono font-bold pr-1">Total LOST: −{fmt(expenseWin)}</div>
@@ -662,7 +646,7 @@ export default function AdminHome() {
         )}
 
         {expenseEntries.length === 0 && (
-          <p className="text-xs text-gray-700 text-center py-1">No entries yet — add from Moderator page</p>
+          <p className="text-xs text-gray-700 text-center py-1">No entries yet</p>
         )}
       </div>
 
