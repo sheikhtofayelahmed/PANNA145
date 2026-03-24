@@ -48,7 +48,7 @@ export default function AdminLayout({ children }) {
 
   return (
     <div className="min-h-screen bg-gray-950 flex flex-col">
-      <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center justify-between">
+      <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center justify-center relative">
         <nav className="flex gap-1">
           {navLinks.map((link) => (
             <Link key={link.href} href={link.href}>
@@ -65,7 +65,7 @@ export default function AdminLayout({ children }) {
         </nav>
         <button
           onClick={handleLogout}
-          className="text-sm px-3 py-1 bg-red-700 hover:bg-red-600 rounded-lg transition">
+          className="absolute right-4 text-sm px-3 py-1 bg-red-700 hover:bg-red-600 rounded-lg transition">
           Logout
         </button>
       </header>
