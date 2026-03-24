@@ -143,6 +143,19 @@ export default function AdminHome() {
   const [addExpenseAmount, setAddExpenseAmount] = useState("");
   const [addExpenseNote, setAddExpenseNote] = useState("");
   const [addExpenseSaving, setAddExpenseSaving] = useState(false);
+  // Debt
+  const [agentDebts, setAgentDebts] = useState([]); // all debt entries
+  const [debtAgentId, setDebtAgentId] = useState("");
+  const [debtType, setDebtType] = useState("banker_gets");
+  const [debtAmount, setDebtAmount] = useState("");
+  const [debtNote, setDebtNote] = useState("");
+  const [debtSaving, setDebtSaving] = useState(false);
+  // Lost
+  const [agentLostData, setAgentLostData] = useState([]); // array of { agentId, total, entries }
+  const [lostAgentId, setLostAgentId] = useState("");
+  const [lostAmount, setLostAmount] = useState("");
+  const [lostNote, setLostNote] = useState("");
+  const [lostSaving, setLostSaving] = useState(false);
   const tableRef = useRef(null);
 
   const CLEAR_KEYWORD = "CLEAR ALL";
@@ -199,6 +212,38 @@ export default function AdminHome() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clearAll: true }),
     });
+    // Auto-adjust debt per agent based on session P/L
+    await Promise.all(
+      rows.map(async (r) => {
+        const agentId = r.agentId;
+        if (!agentId) return;
+        // Find latest existing debt for this agent
+        const existingDebts = agentDebts.filter((d) => d.agentId === agentId);
+        const latest = existingDebts[0]; // already sorted by setAt desc
+        // Convert existing debt to signed value (positive = banker gets)
+        const prevSigned = latest
+          ? latest.type === "banker_gets" ? latest.amount : -latest.amount
+          : 0;
+        // r.pl: positive = BANKER wins (agent owes more), negative = AGENT wins
+        const newSigned = prevSigned + r.pl;
+        const newType = newSigned >= 0 ? "banker_gets" : "agent_gets";
+        const newAmount = Math.abs(newSigned);
+        await fetch("/api/agent-debt", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            agentId,
+            type: newType,
+            amount: newAmount,
+            note: `Auto: session ${saDate}`,
+          }),
+        });
+      })
+    );
+    // Refresh debt data
+    const newDebtRes = await fetch("/api/agent-debt");
+    const newDebtJson = await newDebtRes.json();
+    setAgentDebts(newDebtJson.debts || []);
     setPreviousPL((prev) => (prev ?? 0) + adjustedGrandPL);
     setSummaryHistory((prev) => [
       {
@@ -227,25 +272,31 @@ export default function AdminHome() {
   useEffect(() => {
     async function load() {
       try {
-        const [gameRes, agentRes, histRes, summaryRes, expenseRes] =
+        const [gameRes, agentRes, histRes, summaryRes, expenseRes, debtRes, lostRes] =
           await Promise.all([
             fetch("/api/visitor-game-data"),
             fetch("/api/get-all-agents"),
             fetch("/api/pl-history"),
             fetch("/api/summary-history"),
             fetch("/api/expense"),
+            fetch("/api/agent-debt"),
+            fetch("/api/agent-lost"),
           ]);
         const gameJson = await gameRes.json();
         const agentJson = await agentRes.json();
         const histJson = await histRes.json();
         const summaryJson = await summaryRes.json();
         const expenseJson = await expenseRes.json();
+        const debtJson = await debtRes.json();
+        const lostJson = await lostRes.json();
         setData(gameJson.data || []);
         setPreviousPL(histJson.totalPL ?? 0);
         setSummaryHistory(summaryJson.records || []);
         setExpenseEntries(expenseJson.entries || []);
         setExpenseLabelWin(expenseJson.winLabel || "LOST");
         setExpenseLabelGame(expenseJson.gameLabel || "GET");
+        setAgentDebts(debtJson.debts || []);
+        setAgentLostData(lostJson.lostData || []);
         const map = {};
         (agentJson.agents || []).forEach((a) => {
           map[a.agentId] = a;
@@ -305,10 +356,11 @@ export default function AdminHome() {
   const totalWinDisc = rows.reduce((s, r) => s + r.winDiscAmount, 0);
   const expenseGame = expenseEntries.filter((e) => e.type === "game").reduce((s, e) => s + e.amount, 0);
   const expenseWin = expenseEntries.filter((e) => e.type === "win").reduce((s, e) => s + e.amount, 0);
+  const totalLostAll = agentLostData.reduce((s, l) => s + (l.total || 0), 0);
   const netExp = expenseGame - expenseWin;
   const totGameDisplay = grandGame + (netExp > 0 ? netExp : 0);
   const totWinDisplay = grandWin + totalWinDisc + (netExp < 0 ? -netExp : 0);
-  const adjustedGrandPL = grandPL + expenseGame - expenseWin;
+  const adjustedGrandPL = grandPL + expenseGame - expenseWin - totalLostAll;
   const adjustedGrandTag = adjustedGrandPL >= 0 ? "BANKER" : "AGENT";
 
   async function shareWhatsApp() {
@@ -757,6 +809,164 @@ export default function AdminHome() {
             }}
             className="w-full py-2 text-xs bg-white text-black font-bold rounded-lg hover:bg-gray-200 disabled:opacity-50 transition">
             {addExpenseSaving ? "Adding..." : `Add ${addExpenseType === "game" ? "GET" : "LOST"}`}
+          </button>
+        </div>
+      </div>
+
+      {/* Debt Management */}
+      <div className="mt-4 bg-gray-900 border border-gray-700 rounded-xl p-4 space-y-3">
+        <span className="text-xs text-gray-500 uppercase tracking-wider">Debt</span>
+
+        {/* Per-agent latest debt */}
+        {Object.keys(agentMap).length > 0 && (() => {
+          const agentIds = Object.keys(agentMap).sort(
+            (a, b) => (agentMap[a]?.serial ?? 999) - (agentMap[b]?.serial ?? 999)
+          );
+          const shown = agentIds.filter((id) => agentDebts.some((d) => d.agentId === id));
+          if (shown.length === 0) return <p className="text-xs text-gray-700 text-center py-1">No debt recorded</p>;
+          return (
+            <div className="space-y-1">
+              {shown.map((id) => {
+                const latest = agentDebts.find((d) => d.agentId === id);
+                if (!latest) return null;
+                return (
+                  <div key={id} className="flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2">
+                    <div>
+                      <span className="text-sm text-white font-semibold">{agentMap[id]?.name || id}</span>
+                      {latest.note && <span className="text-xs text-gray-600 ml-2 italic">{latest.note}</span>}
+                      <div className="text-xs text-gray-600">{new Date(latest.setAt).toLocaleString("en-GB", { timeZone: "Asia/Riyadh" })}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className={`font-mono font-bold ${latest.type === "banker_gets" ? "text-red-400" : "text-green-400"}`}>
+                        {fmt(latest.amount)}
+                      </div>
+                      <div className={`text-xs ${latest.type === "banker_gets" ? "text-red-700" : "text-green-700"}`}>
+                        {latest.type === "banker_gets" ? "Agent owes" : "Banker owes"}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+
+        {/* Add debt form */}
+        <div className="border-t border-gray-800 pt-3 space-y-2">
+          <select value={debtAgentId} onChange={(e) => setDebtAgentId(e.target.value)}
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none">
+            <option value="">Select Agent</option>
+            {Object.keys(agentMap).sort((a,b)=>(agentMap[a]?.serial??999)-(agentMap[b]?.serial??999)).map((id) => (
+              <option key={id} value={id}>{agentMap[id]?.name || id}</option>
+            ))}
+          </select>
+          <div className="flex gap-2">
+            <button onClick={() => setDebtType("banker_gets")}
+              className={`flex-1 py-1.5 text-xs rounded-lg font-semibold transition ${debtType === "banker_gets" ? "bg-red-900 text-red-300 border border-red-700" : "bg-gray-800 text-gray-500 hover:text-gray-300"}`}>
+              Agent Owes
+            </button>
+            <button onClick={() => setDebtType("agent_gets")}
+              className={`flex-1 py-1.5 text-xs rounded-lg font-semibold transition ${debtType === "agent_gets" ? "bg-green-900 text-green-300 border border-green-700" : "bg-gray-800 text-gray-500 hover:text-gray-300"}`}>
+              Banker Owes
+            </button>
+          </div>
+          <input type="number" min="0" value={debtAmount} onChange={(e) => setDebtAmount(e.target.value)}
+            placeholder="Amount"
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none" />
+          <input type="text" value={debtNote} onChange={(e) => setDebtNote(e.target.value)}
+            placeholder="Note (optional)"
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none" />
+          <button disabled={debtSaving || !debtAgentId || !debtAmount}
+            onClick={async () => {
+              setDebtSaving(true);
+              try {
+                const res = await fetch("/api/agent-debt", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ agentId: debtAgentId, type: debtType, amount: Number(debtAmount), note: debtNote }),
+                });
+                if (res.ok) {
+                  const updated = await fetch("/api/agent-debt");
+                  const json = await updated.json();
+                  setAgentDebts(json.debts || []);
+                  setDebtAmount(""); setDebtNote("");
+                }
+              } finally { setDebtSaving(false); }
+            }}
+            className="w-full py-2 text-xs bg-white text-black font-bold rounded-lg hover:bg-gray-200 disabled:opacity-50 transition">
+            {debtSaving ? "Saving..." : "Set Debt"}
+          </button>
+        </div>
+      </div>
+
+      {/* Lost / Unpaid Amount */}
+      <div className="mt-4 bg-gray-900 border border-gray-700 rounded-xl p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-gray-500 uppercase tracking-wider">Unpaid (Lost)</span>
+          {totalLostAll > 0 && (
+            <span className="text-xs text-orange-400 font-mono font-bold">−{fmt(totalLostAll)} from P/L</span>
+          )}
+        </div>
+
+        {agentLostData.length > 0 && (
+          <div className="space-y-1">
+            {agentLostData.map((l) => (
+              <div key={l.agentId} className="flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2">
+                <span className="text-sm text-white">{agentMap[l.agentId]?.name || l.agentId}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-orange-400 font-mono font-bold">{fmt(l.total)}</span>
+                  <button
+                    onClick={async () => {
+                      if (!confirm(`Clear all unpaid for ${agentMap[l.agentId]?.name || l.agentId}?`)) return;
+                      await fetch("/api/agent-lost", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ agentId: l.agentId, clearAgent: true }) });
+                      const updated = await fetch("/api/agent-lost");
+                      const json = await updated.json();
+                      setAgentLostData(json.lostData || []);
+                    }}
+                    className="text-gray-600 hover:text-red-400 transition text-xs">clear</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {agentLostData.length === 0 && (
+          <p className="text-xs text-gray-700 text-center py-1">No unpaid amounts</p>
+        )}
+
+        {/* Add lost form */}
+        <div className="border-t border-gray-800 pt-3 space-y-2">
+          <select value={lostAgentId} onChange={(e) => setLostAgentId(e.target.value)}
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none">
+            <option value="">Select Agent</option>
+            {Object.keys(agentMap).sort((a,b)=>(agentMap[a]?.serial??999)-(agentMap[b]?.serial??999)).map((id) => (
+              <option key={id} value={id}>{agentMap[id]?.name || id}</option>
+            ))}
+          </select>
+          <input type="number" min="1" value={lostAmount} onChange={(e) => setLostAmount(e.target.value)}
+            placeholder="Amount (adds to existing)"
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none" />
+          <input type="text" value={lostNote} onChange={(e) => setLostNote(e.target.value)}
+            placeholder="Note (optional)"
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none" />
+          <button disabled={lostSaving || !lostAgentId || !lostAmount}
+            onClick={async () => {
+              setLostSaving(true);
+              try {
+                const res = await fetch("/api/agent-lost", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ agentId: lostAgentId, amount: Number(lostAmount), note: lostNote }),
+                });
+                if (res.ok) {
+                  const updated = await fetch("/api/agent-lost");
+                  const json = await updated.json();
+                  setAgentLostData(json.lostData || []);
+                  setLostAmount(""); setLostNote("");
+                }
+              } finally { setLostSaving(false); }
+            }}
+            className="w-full py-2 text-xs bg-white text-black font-bold rounded-lg hover:bg-gray-200 disabled:opacity-50 transition">
+            {lostSaving ? "Adding..." : "Add Unpaid"}
           </button>
         </div>
       </div>

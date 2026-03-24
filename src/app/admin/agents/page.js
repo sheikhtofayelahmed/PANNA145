@@ -48,6 +48,7 @@ export default function AdminAgentsPage() {
   const [editGameDiscount, setEditGameDiscount] = useState("");
   const [editWinDiscount, setEditWinDiscount] = useState("");
   const [editShowExtraGames, setEditShowExtraGames] = useState(false);
+  const [editPassword, setEditPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null); // { agentId, name }
   const dragIndex = useRef(null);
@@ -91,6 +92,7 @@ export default function AdminAgentsPage() {
     setEditGameDiscount(agent.gameDiscount ?? "");
     setEditWinDiscount(agent.winDiscount ?? "");
     setEditShowExtraGames(agent.showExtraGames ?? false);
+    setEditPassword(agent.password || "");
   }
 
   function cancelEdit() { setEditId(null); }
@@ -118,7 +120,7 @@ export default function AdminAgentsPage() {
     const res = await fetch("/api/agents", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ agentId, name: editName, gameDiscount: editGameDiscount, winDiscount: editWinDiscount, showExtraGames: editShowExtraGames }),
+      body: JSON.stringify({ agentId, name: editName, gameDiscount: editGameDiscount, winDiscount: editWinDiscount, showExtraGames: editShowExtraGames, password: editPassword }),
     });
     if (res.ok) { flash("success", "Updated"); setEditId(null); load(); }
     else flash("error", "Update failed");
@@ -230,6 +232,16 @@ export default function AdminAgentsPage() {
                     </div>
                     <span className="text-xs text-gray-400">Extra Games</span>
                   </label>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Login Password</label>
+                    <input
+                      type="text"
+                      value={editPassword}
+                      onChange={(e) => setEditPassword(e.target.value)}
+                      placeholder="Set agent password"
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-yellow-500"
+                    />
+                  </div>
                   <div className="flex gap-2">
                     <button onClick={() => handleSave(agent.agentId)} disabled={saving}
                       className="px-4 py-1.5 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black font-bold rounded-lg text-sm transition">
@@ -251,6 +263,9 @@ export default function AdminAgentsPage() {
                       <span className="text-xs px-2 py-0.5 rounded bg-gray-800 text-gray-300">W: {agent.winDiscount ?? 0}%</span>
                       {agent.showExtraGames && (
                         <span className="text-xs px-2 py-0.5 rounded bg-yellow-900/50 text-yellow-400 font-bold">+Extra</span>
+                      )}
+                      {agent.password && (
+                        <span className="text-xs px-2 py-0.5 rounded bg-blue-900/50 text-blue-400">🔒 Login</span>
                       )}
                     </div>
                   </div>
