@@ -84,7 +84,7 @@ export default function AdminModeratorPage() {
   }
 
   return (
-    <div className="max-w-xl">
+    <div className="max-w-xl mx-auto">
       <h2 className="text-xl font-bold text-yellow-400 mb-5">Moderators</h2>
 
       {msg.text && (

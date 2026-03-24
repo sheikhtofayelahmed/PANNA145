@@ -80,7 +80,7 @@ export default function GameNamesPage() {
   }
 
   return (
-    <div className="max-w-md">
+    <div className="max-w-md mx-auto">
       {deleteTarget && (
         <ConfirmModal
           target={deleteTarget}

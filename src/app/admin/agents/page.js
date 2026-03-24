@@ -144,7 +144,7 @@ export default function AdminAgentsPage() {
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-2xl mx-auto">
       {deleteTarget && (
         <ConfirmModal
           target={deleteTarget.agentId}
