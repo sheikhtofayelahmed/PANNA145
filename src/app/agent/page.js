@@ -339,6 +339,14 @@ export default function AgentPage() {
               const pl = applyWinDisc ? initialPL * (1 - winDisc) : initialPL;
               const winDiscAmount = applyWinDisc ? initialPL * winDisc : 0;
               const tag = pl >= 0 ? "BANKER" : "AGENT";
+
+              // Debt adjustment
+              const debtAmount = debt?.amount || 0;
+              // banker_gets → agent owes → adds to banker P/L; agent_gets → banker owes → subtracts
+              const debtAdj = debt ? (debt.type === "banker_gets" ? debtAmount : -debtAmount) : 0;
+              const finalPL = pl + debtAdj;
+              const finalTag = finalPL >= 0 ? "BANKER" : "AGENT";
+
               const sth = "border border-gray-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-gray-500 bg-gray-50";
               const std = "border border-gray-300 px-3 py-1.5 text-sm";
               return (
@@ -379,6 +387,27 @@ export default function AgentPage() {
                           </span>
                         </td>
                       </tr>
+                      {/* Debt row */}
+                      {debt && debtAmount > 0 && (
+                        <tr className="bg-yellow-50">
+                          <td className={`${std}`}></td>
+                          <td className={`${std} text-xs text-yellow-700 font-semibold`}>
+                            Debt
+                            {debt.note ? <span className="text-gray-400 font-normal ml-1">({debt.note})</span> : null}
+                          </td>
+                          <td className={`${std}`}></td>
+                          <td className={`${std}`}></td>
+                          <td className={`${std} text-right font-mono text-xs`}>
+                            <span className={debtAdj >= 0 ? "text-green-700" : "text-red-600"}>
+                              {debtAdj >= 0 ? "+" : "−"}{fmt(debtAmount)}
+                            </span>
+                            <div className="text-gray-400 text-xs">
+                              {debt.type === "banker_gets" ? "Agent owes" : "Banker owes"}
+                            </div>
+                          </td>
+                          <td className={`${std}`}></td>
+                        </tr>
+                      )}
                     </tbody>
                     <tfoot>
                       <tr className="border-t-2 border-gray-400 bg-gray-50 font-bold">
@@ -386,12 +415,12 @@ export default function AgentPage() {
                         <td className={`${std} text-xs uppercase tracking-wider text-gray-500`}>Total</td>
                         <td className={`${std} text-right font-mono`}>{fmt(netGame)}</td>
                         <td className={`${std} text-right font-mono`}>{fmt(rawWin + winDiscAmount)}</td>
-                        <td className={`${std} text-right font-mono font-bold ${tag === "BANKER" ? "text-green-700" : "text-red-600"}`}>
-                          {fmt(Math.abs(pl))}
+                        <td className={`${std} text-right font-mono font-bold ${finalTag === "BANKER" ? "text-green-700" : "text-red-600"}`}>
+                          {fmt(Math.abs(finalPL))}
                         </td>
                         <td className={`${std} text-center`}>
-                          <span className={`text-xs font-bold px-2 py-0.5 rounded ${tag === "BANKER" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
-                            {tag}
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded ${finalTag === "BANKER" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+                            {finalTag}
                           </span>
                         </td>
                       </tr>
