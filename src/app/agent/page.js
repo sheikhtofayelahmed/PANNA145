@@ -340,10 +340,9 @@ export default function AgentPage() {
               const winDiscAmount = applyWinDisc ? initialPL * winDisc : 0;
               const tag = pl >= 0 ? "BANKER" : "AGENT";
 
-              // Debt adjustment
+              // Debt adjustment — always added to the settled total
               const debtAmount = debt?.amount || 0;
-              // banker_gets → agent owes → adds to banker P/L; agent_gets → banker owes → subtracts
-              const debtAdj = debt ? (debt.type === "banker_gets" ? debtAmount : -debtAmount) : 0;
+              const debtAdj = debt ? debtAmount : 0;
               const finalPL = pl + debtAdj;
               const finalTag = finalPL >= 0 ? "BANKER" : "AGENT";
 
@@ -398,8 +397,8 @@ export default function AgentPage() {
                           <td className={`${std}`}></td>
                           <td className={`${std}`}></td>
                           <td className={`${std} text-right font-mono text-xs`}>
-                            <span className={debtAdj >= 0 ? "text-green-700" : "text-red-600"}>
-                              {debtAdj >= 0 ? "+" : "−"}{fmt(debtAmount)}
+                            <span className="text-green-700">
+                              +{fmt(debtAmount)}
                             </span>
                             <div className="text-gray-400 text-xs">
                               {debt.type === "banker_gets" ? "Agent owes" : "Banker owes"}
