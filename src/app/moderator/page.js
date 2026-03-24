@@ -126,7 +126,13 @@ function ExpenseSection() {
               {entries.filter((e) => e.type === "game").map((e) => (
                 <div key={e.id} className="flex items-center justify-between bg-gray-800 rounded-lg px-3 py-1.5 text-sm">
                   <span className="text-gray-400 text-xs">{e.note || expenseLabelGame}</span>
-                  <span className="text-green-400 font-mono font-semibold">+{fmt(e.amount)}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-green-400 font-mono font-semibold">+{fmt(e.amount)}</span>
+                    <button onClick={async () => {
+                      await fetch("/api/expense", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: e.id }) });
+                      await load();
+                    }} className="text-gray-600 hover:text-red-400 transition text-base leading-none">×</button>
+                  </div>
                 </div>
               ))}
               <div className="text-right text-xs text-green-400 font-mono font-bold pr-1">Total: +{fmt(totalGame)}</div>
@@ -138,7 +144,13 @@ function ExpenseSection() {
               {entries.filter((e) => e.type === "win").map((e) => (
                 <div key={e.id} className="flex items-center justify-between bg-gray-800 rounded-lg px-3 py-1.5 text-sm">
                   <span className="text-gray-400 text-xs">{e.note || expenseLabelWin}</span>
-                  <span className="text-red-400 font-mono font-semibold">−{fmt(e.amount)}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-red-400 font-mono font-semibold">−{fmt(e.amount)}</span>
+                    <button onClick={async () => {
+                      await fetch("/api/expense", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: e.id }) });
+                      await load();
+                    }} className="text-gray-600 hover:text-red-400 transition text-base leading-none">×</button>
+                  </div>
                 </div>
               ))}
               <div className="text-right text-xs text-red-400 font-mono font-bold pr-1">Total: −{fmt(totalWin)}</div>
