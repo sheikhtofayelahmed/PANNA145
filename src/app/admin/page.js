@@ -519,11 +519,22 @@ export default function AdminHome() {
                   <th className={`${th} text-right`}>Total Game</th>
                   <th className={`${th} text-right`}>Total Win</th>
                   <th className={`${th} text-right`}>P / L</th>
+                  <th className={`${th} text-right`}>Net P/L</th>
                   <th className={`${th} text-center`}>Tag</th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r, i) => (
+                {rows.map((r, i) => {
+                  const debt = agentDebts.find((d) => d.agentId === r.agentId);
+                  const debtAmount = debt?.amount || 0;
+                  const sameSide = debt && (
+                    (r.tag === "BANKER" && debt.type === "agent_gets") ||
+                    (r.tag === "AGENT"  && debt.type === "banker_gets")
+                  );
+                  const debtAdj = debt ? (sameSide ? debtAmount : -debtAmount) : 0;
+                  const netPL = r.pl + debtAdj;
+                  const netTag = netPL >= 0 ? "BANKER" : "AGENT";
+                  return (
                   <tr key={r.agentId} className="hover:bg-gray-900/40">
                     <td className={`${td} text-center text-gray-500 text-xs`}>
                       {i + 1}
@@ -544,6 +555,20 @@ export default function AdminHome() {
                       className={`${td} text-right font-mono font-bold ${r.tag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
                       {fmt(Math.abs(r.pl))}
                     </td>
+                    <td className={`${td} text-right`}>
+                      {debt ? (
+                        <div>
+                          <div className={`font-mono font-bold ${netTag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
+                            {fmt(Math.abs(netPL))}
+                          </div>
+                          <div className={`text-xs font-mono ${sameSide ? "text-green-500" : "text-red-500"}`}>
+                            {sameSide ? "+" : "−"}{fmt(debtAmount)} debt
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-gray-600 text-xs">—</span>
+                      )}
+                    </td>
                     <td className={`${td} text-center`}>
                       <span
                         className={`text-xs font-bold px-2 py-0.5 rounded ${r.tag === "BANKER" ? "bg-green-900/50 text-green-400" : "bg-red-900/50 text-red-400"}`}>
@@ -551,7 +576,8 @@ export default function AdminHome() {
                       </span>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
                 {(expenseGame !== 0 || expenseWin !== 0) &&
                   (() => {
                     const netExp = expenseGame - expenseWin;
@@ -578,6 +604,7 @@ export default function AdminHome() {
                         </td>
                         <td className={`${td}`}></td>
                         <td className={`${td}`}></td>
+                        <td className={`${td}`}></td>
                       </tr>
                     );
                   })()}
@@ -599,6 +626,23 @@ export default function AdminHome() {
                     className={`${td} text-right font-mono font-bold ${adjustedGrandTag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
                     {fmt(Math.abs(adjustedGrandPL))}
                   </td>
+                  {(() => {
+                    const grandNetPL = rows.reduce((s, r) => {
+                      const debt = agentDebts.find((d) => d.agentId === r.agentId);
+                      const debtAmount = debt?.amount || 0;
+                      const sameSide = debt && (
+                        (r.tag === "BANKER" && debt.type === "agent_gets") ||
+                        (r.tag === "AGENT"  && debt.type === "banker_gets")
+                      );
+                      return s + r.pl + (debt ? (sameSide ? debtAmount : -debtAmount) : 0);
+                    }, 0) + expenseGame - expenseWin - totalLostAll;
+                    const grandNetTag = grandNetPL >= 0 ? "BANKER" : "AGENT";
+                    return (
+                      <td className={`${td} text-right font-mono font-bold ${grandNetTag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
+                        {fmt(Math.abs(grandNetPL))}
+                      </td>
+                    );
+                  })()}
                   <td className={`${td} text-center`}>
                     <span
                       className={`text-xs font-bold px-2 py-0.5 rounded ${adjustedGrandTag === "BANKER" ? "bg-green-900/50 text-green-400" : "bg-red-900/50 text-red-400"}`}>
