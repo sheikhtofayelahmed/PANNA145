@@ -808,61 +808,6 @@ export default function AdminHome() {
         </div>
       </div>
 
-      {/* Accumulated P/L */}
-      {previousPL !== null && (previousPL !== 0 || rows.length > 0) && (
-        <div className="mt-4 bg-gray-900 border border-gray-700 rounded-xl p-4 space-y-2">
-          <div className="text-xs text-gray-500 uppercase tracking-wider mb-2">
-            Accumulated P/L
-          </div>
-          {previousPL !== 0 && (
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-gray-400">Previous Sessions</span>
-              <span className={`font-mono font-bold ${previousPL >= 0 ? "text-green-400" : "text-red-400"}`}>
-                {fmt(Math.abs(previousPL))}{" "}{previousPL >= 0 ? "BANKER" : "AGENT"}
-              </span>
-            </div>
-          )}
-          {rows.length > 0 && (
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-gray-400">Current Session</span>
-              <span className={`font-mono font-bold ${adjustedGrandPL >= 0 ? "text-green-400" : "text-red-400"}`}>
-                {fmt(Math.abs(adjustedGrandPL))} {adjustedGrandTag}
-              </span>
-            </div>
-          )}
-          {previousPL !== 0 && rows.length > 0 && (() => {
-            const combined = previousPL + adjustedGrandPL;
-            const combinedTag = combined >= 0 ? "BANKER" : "AGENT";
-            return (
-              <div className="flex justify-between items-center pt-2 border-t border-gray-700 text-sm font-bold">
-                <span className="text-white">Grand Total</span>
-                <span className={`font-mono text-lg ${combined >= 0 ? "text-green-400" : "text-red-400"}`}>
-                  {fmt(Math.abs(combined))} {combinedTag}
-                </span>
-              </div>
-            );
-          })()}
-        </div>
-      )}
-
-      {/* Expense footnote */}
-      {(expenseGame !== 0 || expenseWin !== 0) && (
-        <div className="mt-4 px-1 space-y-0.5">
-          {expenseGame !== 0 && (
-            <div className="text-xs text-gray-500">
-              <span className="text-green-400 font-mono font-semibold">GET {fmt(expenseGame)}</span>
-              {" "}— Received from other bookmakers (added to Game)
-            </div>
-          )}
-          {expenseWin !== 0 && (
-            <div className="text-xs text-gray-500">
-              <span className="text-red-400 font-mono font-semibold">LOST {fmt(expenseWin)}</span>
-              {" "}— Paid to other bookmakers (added to Win)
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Past Summaries */}
       {summaryHistory.length > 0 && (
         <div className="mt-6">
@@ -1042,6 +987,61 @@ export default function AdminHome() {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* Accumulated P/L */}
+      {previousPL !== null && (previousPL !== 0 || rows.length > 0) && (
+        <div className="mt-4 bg-gray-900 border border-gray-700 rounded-xl p-4 space-y-2">
+          <div className="text-xs text-gray-500 uppercase tracking-wider mb-2">
+            Accumulated P/L
+          </div>
+          {previousPL !== 0 && (
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-gray-400">Previous Sessions</span>
+              <span className={`font-mono font-bold ${previousPL >= 0 ? "text-green-400" : "text-red-400"}`}>
+                {fmt(Math.abs(previousPL))}{" "}{previousPL >= 0 ? "BANKER" : "AGENT"}
+              </span>
+            </div>
+          )}
+          {rows.length > 0 && (
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-gray-400">Current Session</span>
+              <span className={`font-mono font-bold ${adjustedGrandPL >= 0 ? "text-green-400" : "text-red-400"}`}>
+                {fmt(Math.abs(adjustedGrandPL))} {adjustedGrandTag}
+              </span>
+            </div>
+          )}
+          {previousPL !== 0 && rows.length > 0 && (() => {
+            const combined = previousPL + adjustedGrandPL;
+            const combinedTag = combined >= 0 ? "BANKER" : "AGENT";
+            return (
+              <div className="flex justify-between items-center pt-2 border-t border-gray-700 text-sm font-bold">
+                <span className="text-white">Grand Total</span>
+                <span className={`font-mono text-lg ${combined >= 0 ? "text-green-400" : "text-red-400"}`}>
+                  {fmt(Math.abs(combined))} {combinedTag}
+                </span>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* Expense footnote */}
+      {(expenseGame !== 0 || expenseWin !== 0) && (
+        <div className="mt-4 px-1 space-y-0.5">
+          {expenseGame !== 0 && (
+            <div className="text-xs text-gray-500">
+              <span className="text-green-400 font-mono font-semibold">GET {fmt(expenseGame)}</span>
+              {" "}— Received from other bookmakers (added to Game)
+            </div>
+          )}
+          {expenseWin !== 0 && (
+            <div className="text-xs text-gray-500">
+              <span className="text-red-400 font-mono font-semibold">LOST {fmt(expenseWin)}</span>
+              {" "}— Paid to other bookmakers (added to Win)
+            </div>
+          )}
         </div>
       )}
 
