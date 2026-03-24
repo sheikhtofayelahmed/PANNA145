@@ -139,6 +139,8 @@ export default function AdminHome() {
   const [expenseEntries, setExpenseEntries] = useState([]);
   const [expenseLabelWin, setExpenseLabelWin] = useState("LOST");
   const [expenseLabelGame, setExpenseLabelGame] = useState("GET");
+  const [defaultExpenseAmount, setDefaultExpenseAmount] = useState(0);
+  const [defaultExpenseType,   setDefaultExpenseType]   = useState("game");
   const [addExpenseType, setAddExpenseType] = useState("game");
   const [addExpenseAmount, setAddExpenseAmount] = useState("");
   const [addExpenseNote, setAddExpenseNote] = useState("");
@@ -263,6 +265,8 @@ export default function AdminHome() {
         setExpenseEntries(expenseJson.entries || []);
         setExpenseLabelWin(expenseJson.winLabel || "LOST");
         setExpenseLabelGame(expenseJson.gameLabel || "GET");
+        setDefaultExpenseAmount(expenseJson.defaultAmount || 0);
+        setDefaultExpenseType(expenseJson.defaultType || "game");
         setAgentDebts(debtJson.debts || []);
         setAgentLostData(lostJson.lostData || []);
         const map = {};
@@ -322,8 +326,10 @@ export default function AdminHome() {
   const grandPL = rows.reduce((s, r) => s + r.pl, 0);
   const grandTag = grandPL >= 0 ? "BANKER" : "AGENT";
   const totalWinDisc = rows.reduce((s, r) => s + r.winDiscAmount, 0);
-  const expenseGame = expenseEntries.filter((e) => e.type === "game").reduce((s, e) => s + e.amount, 0);
-  const expenseWin = expenseEntries.filter((e) => e.type === "win").reduce((s, e) => s + e.amount, 0);
+  const expenseGame = expenseEntries.filter((e) => e.type === "game").reduce((s, e) => s + e.amount, 0)
+    + (defaultExpenseType === "game" ? defaultExpenseAmount : 0);
+  const expenseWin = expenseEntries.filter((e) => e.type === "win").reduce((s, e) => s + e.amount, 0)
+    + (defaultExpenseType === "win" ? defaultExpenseAmount : 0);
   const totalLostAll = agentLostData.reduce((s, l) => s + (l.total || 0), 0);
   const netExp = expenseGame - expenseWin;
   const totGameDisplay = grandGame + (netExp > 0 ? netExp : 0);
@@ -616,6 +622,19 @@ export default function AdminHome() {
       {/* Expense — multi-entry */}
       <div className="mt-4 bg-gray-900 border border-gray-700 rounded-xl p-4 space-y-3">
         <span className="text-xs text-gray-500 uppercase tracking-wider">Expense</span>
+
+        {/* Default daily expense */}
+        {defaultExpenseAmount > 0 && (
+          <div className="flex items-center justify-between bg-gray-800 border border-gray-700 rounded-lg px-3 py-2">
+            <div>
+              <span className="text-xs text-yellow-400 font-semibold uppercase tracking-wider">Daily Default</span>
+              <span className="text-xs text-gray-500 ml-2">{defaultExpenseType === "game" ? "GET — Game" : "LOST — Win"}</span>
+            </div>
+            <span className={`font-mono font-bold ${defaultExpenseType === "game" ? "text-green-400" : "text-red-400"}`}>
+              {defaultExpenseType === "game" ? "+" : "−"}{fmt(defaultExpenseAmount)}
+            </span>
+          </div>
+        )}
 
         {/* GET entries */}
         {expenseEntries.filter((e) => e.type === "game").length > 0 && (

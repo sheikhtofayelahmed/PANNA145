@@ -18,12 +18,20 @@ export default async function handler(req, res) {
       .filter((e) => e.type === "win")
       .reduce((s, e) => s + (e.amount || 0), 0);
 
+    const defaultAmount = config?.defaultAmount || 0;
+    const defaultType   = config?.defaultType   || "game";
+    const totalGameAmount = gameAmount + (defaultType === "game" ? defaultAmount : 0);
+    const totalWinAmount  = winAmount  + (defaultType === "win"  ? defaultAmount : 0);
+
     return res.status(200).json({
       // Backward-compatible fields (visitor page uses these)
-      winAmount,
-      gameAmount,
-      winLabel: config?.winLabel || "LOST",
+      winAmount:  totalWinAmount,
+      gameAmount: totalGameAmount,
+      winLabel:  config?.winLabel  || "LOST",
       gameLabel: config?.gameLabel || "GET",
+      // Default daily expense
+      defaultAmount,
+      defaultType,
       // New: individual entries
       entries: entries.map((e) => ({
         id: e._id.toString(),
@@ -66,14 +74,15 @@ export default async function handler(req, res) {
     return res.status(200).json({ message: "Deleted" });
   }
 
-  // Update labels only
+  // Update labels / default expense
   if (req.method === "PUT") {
-    const { winLabel, gameLabel } = req.body;
-    await configCol.updateOne(
-      {},
-      { $set: { winLabel: winLabel || "LOST", gameLabel: gameLabel || "GET" } },
-      { upsert: true }
-    );
+    const { winLabel, gameLabel, defaultAmount, defaultType } = req.body;
+    const $set = {};
+    if (winLabel  !== undefined) $set.winLabel  = winLabel  || "LOST";
+    if (gameLabel !== undefined) $set.gameLabel = gameLabel || "GET";
+    if (defaultAmount !== undefined) $set.defaultAmount = Number(defaultAmount) || 0;
+    if (defaultType   !== undefined) $set.defaultType   = ["game","win"].includes(defaultType) ? defaultType : "game";
+    await configCol.updateOne({}, { $set }, { upsert: true });
     return res.status(200).json({ message: "Updated" });
   }
 

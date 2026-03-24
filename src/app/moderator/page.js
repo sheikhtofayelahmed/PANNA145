@@ -14,12 +14,34 @@ function ExpenseSection() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
 
+  const [defaultAmount, setDefaultAmount] = useState(0);
+  const [defaultType,   setDefaultType]   = useState("game");
+  const [editingDefault, setEditingDefault] = useState(false);
+  const [editDefaultAmount, setEditDefaultAmount] = useState("");
+  const [editDefaultType,   setEditDefaultType]   = useState("game");
+  const [savingDefault, setSavingDefault] = useState(false);
+
   async function load() {
     const res = await fetch("/api/expense");
     const json = await res.json();
     setEntries(json.entries || []);
     setExpenseLabelGame(json.gameLabel || "GET");
     setExpenseLabelWin(json.winLabel || "LOST");
+    setDefaultAmount(json.defaultAmount || 0);
+    setDefaultType(json.defaultType || "game");
+  }
+
+  async function saveDefault() {
+    setSavingDefault(true);
+    try {
+      await fetch("/api/expense", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ defaultAmount: Number(editDefaultAmount) || 0, defaultType: editDefaultType }),
+      });
+      await load();
+      setEditingDefault(false);
+    } finally { setSavingDefault(false); }
   }
 
   useEffect(() => { load(); }, []);
@@ -50,6 +72,51 @@ function ExpenseSection() {
 
   return (
     <div className="space-y-4">
+
+      {/* Daily Default */}
+      <div className="bg-gray-900 border border-gray-700 rounded-xl p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-yellow-400 font-semibold uppercase tracking-wider">Daily Default Expense</span>
+          {!editingDefault && (
+            <button onClick={() => { setEditDefaultAmount(String(defaultAmount)); setEditDefaultType(defaultType); setEditingDefault(true); }}
+              className="text-xs text-gray-500 hover:text-white border border-gray-700 px-2 py-0.5 rounded transition">
+              Edit
+            </button>
+          )}
+        </div>
+        {!editingDefault ? (
+          <div className="flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2">
+            <span className="text-xs text-gray-400">{defaultType === "game" ? "GET — Added to Game" : "LOST — Added to Win"}</span>
+            <span className={`font-mono font-bold ${defaultAmount > 0 ? (defaultType === "game" ? "text-green-400" : "text-red-400") : "text-gray-600"}`}>
+              {defaultAmount > 0 ? `${defaultType === "game" ? "+" : "−"}${fmt(defaultAmount)}` : "Not set"}
+            </span>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <button onClick={() => setEditDefaultType("game")}
+                className={`flex-1 py-1.5 text-xs rounded-lg font-semibold transition ${editDefaultType === "game" ? "bg-green-900 text-green-300 border border-green-700" : "bg-gray-800 text-gray-500 hover:text-gray-300"}`}>
+                GET
+              </button>
+              <button onClick={() => setEditDefaultType("win")}
+                className={`flex-1 py-1.5 text-xs rounded-lg font-semibold transition ${editDefaultType === "win" ? "bg-red-900 text-red-300 border border-red-700" : "bg-gray-800 text-gray-500 hover:text-gray-300"}`}>
+                LOST
+              </button>
+            </div>
+            <input type="number" min="0" value={editDefaultAmount} onChange={(e) => setEditDefaultAmount(e.target.value)}
+              placeholder="Amount (0 to disable)"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none" />
+            <div className="flex gap-2">
+              <button onClick={() => setEditingDefault(false)} className="flex-1 py-1.5 text-xs bg-gray-800 text-gray-400 rounded-lg hover:text-white transition">Cancel</button>
+              <button onClick={saveDefault} disabled={savingDefault}
+                className="flex-1 py-1.5 text-xs bg-white text-black font-bold rounded-lg hover:bg-gray-200 disabled:opacity-50 transition">
+                {savingDefault ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Current entries */}
       {entries.length > 0 && (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 space-y-3">
