@@ -41,6 +41,7 @@ export default function AdminAgentsPage() {
   const [newName, setNewName] = useState("");
   const [newGameDiscount, setNewGameDiscount] = useState("");
   const [newWinDiscount, setNewWinDiscount] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [adding, setAdding] = useState(false);
 
   const [editId, setEditId] = useState(null);
@@ -73,12 +74,12 @@ export default function AdminAgentsPage() {
     const res = await fetch("/api/agents", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ agentId: newId, name: newName, gameDiscount: newGameDiscount, winDiscount: newWinDiscount }),
+      body: JSON.stringify({ agentId: newId, name: newName, gameDiscount: newGameDiscount, winDiscount: newWinDiscount, password: newPassword }),
     });
     const data = await res.json();
     if (res.ok) {
       flash("success", "Agent created");
-      setNewId(""); setNewName(""); setNewGameDiscount(""); setNewWinDiscount("");
+      setNewId(""); setNewName(""); setNewGameDiscount(""); setNewWinDiscount(""); setNewPassword("");
       load();
     } else {
       flash("error", data.error);
@@ -181,6 +182,11 @@ export default function AdminAgentsPage() {
           <div>
             <label className="block text-xs text-gray-400 mb-1">Win Discount %</label>
             <input type="number" min="0" max="100" value={newWinDiscount} onChange={(e) => setNewWinDiscount(e.target.value)} placeholder="0"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-yellow-500" />
+          </div>
+          <div className="col-span-2">
+            <label className="block text-xs text-gray-400 mb-1">Login Password</label>
+            <input type="text" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Agent login password"
               className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-yellow-500" />
           </div>
         </div>

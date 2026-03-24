@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "POST") {
-    const { agentId, name, gameDiscount, winDiscount } = req.body;
+    const { agentId, name, gameDiscount, winDiscount, password } = req.body;
     if (!agentId?.trim() || !name?.trim())
       return res.status(400).json({ error: "Agent ID and name required" });
 
@@ -26,6 +26,7 @@ export default async function handler(req, res) {
       winDiscount: Number(winDiscount || 0),
       serial: count + 1,
       showExtraGames: false,
+      ...(password ? { password } : {}),
     });
     return res.status(201).json({ message: "Agent created" });
   }
