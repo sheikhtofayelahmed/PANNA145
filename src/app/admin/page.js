@@ -721,64 +721,8 @@ export default function AdminHome() {
         )}
 
         {expenseEntries.length === 0 && (
-          <p className="text-xs text-gray-700 text-center py-1">No entries yet</p>
+          <p className="text-xs text-gray-700 text-center py-1">No entries yet — add from Moderator page</p>
         )}
-
-        {/* Add entry form */}
-        <div className="border-t border-gray-800 pt-3 space-y-2">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setAddExpenseType("game")}
-              className={`flex-1 py-1.5 text-xs rounded-lg font-semibold transition ${addExpenseType === "game" ? "bg-green-900 text-green-300 border border-green-700" : "bg-gray-800 text-gray-500 hover:text-gray-300"}`}>
-              GET
-            </button>
-            <button
-              onClick={() => setAddExpenseType("win")}
-              className={`flex-1 py-1.5 text-xs rounded-lg font-semibold transition ${addExpenseType === "win" ? "bg-red-900 text-red-300 border border-red-700" : "bg-gray-800 text-gray-500 hover:text-gray-300"}`}>
-              LOST
-            </button>
-          </div>
-          <input
-            type="number"
-            min="1"
-            value={addExpenseAmount}
-            onChange={(e) => setAddExpenseAmount(e.target.value)}
-            placeholder="Amount"
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none"
-          />
-          <input
-            type="text"
-            value={addExpenseNote}
-            onChange={(e) => setAddExpenseNote(e.target.value)}
-            placeholder="Note (optional)"
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none"
-          />
-          <button
-            disabled={addExpenseSaving || !addExpenseAmount}
-            onClick={async () => {
-              if (!addExpenseAmount) return;
-              setAddExpenseSaving(true);
-              try {
-                const res = await fetch("/api/expense", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ type: addExpenseType, amount: Number(addExpenseAmount), note: addExpenseNote }),
-                });
-                if (res.ok) {
-                  const updated = await fetch("/api/expense");
-                  const json = await updated.json();
-                  setExpenseEntries(json.entries || []);
-                  setAddExpenseAmount("");
-                  setAddExpenseNote("");
-                }
-              } finally {
-                setAddExpenseSaving(false);
-              }
-            }}
-            className="w-full py-2 text-xs bg-white text-black font-bold rounded-lg hover:bg-gray-200 disabled:opacity-50 transition">
-            {addExpenseSaving ? "Adding..." : `Add ${addExpenseType === "game" ? "GET" : "LOST"}`}
-          </button>
-        </div>
       </div>
 
       {/* Debt Management */}
