@@ -212,38 +212,6 @@ export default function AdminHome() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clearAll: true }),
     });
-    // Auto-adjust debt per agent based on session P/L
-    await Promise.all(
-      rows.map(async (r) => {
-        const agentId = r.agentId;
-        if (!agentId) return;
-        // Find latest existing debt for this agent
-        const existingDebts = agentDebts.filter((d) => d.agentId === agentId);
-        const latest = existingDebts[0]; // already sorted by setAt desc
-        // Convert existing debt to signed value (positive = banker gets)
-        const prevSigned = latest
-          ? latest.type === "banker_gets" ? latest.amount : -latest.amount
-          : 0;
-        // r.pl: positive = BANKER wins (agent owes more), negative = AGENT wins
-        const newSigned = prevSigned + r.pl;
-        const newType = newSigned >= 0 ? "banker_gets" : "agent_gets";
-        const newAmount = Math.abs(newSigned);
-        await fetch("/api/agent-debt", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            agentId,
-            type: newType,
-            amount: newAmount,
-            note: `Auto: session ${saDate}`,
-          }),
-        });
-      })
-    );
-    // Refresh debt data
-    const newDebtRes = await fetch("/api/agent-debt");
-    const newDebtJson = await newDebtRes.json();
-    setAgentDebts(newDebtJson.debts || []);
     setPreviousPL((prev) => (prev ?? 0) + adjustedGrandPL);
     setSummaryHistory((prev) => [
       {
