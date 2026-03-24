@@ -27,7 +27,7 @@ export default async function handler(req, res) {
     const cookie = serialize("moderator-auth", cookieVal, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      maxAge: 60 * 60 * 24,
+      maxAge: 60 * 60 * 24 * 7,
       path: "/",
       sameSite: "Lax",
     });

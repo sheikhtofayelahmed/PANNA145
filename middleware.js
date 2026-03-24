@@ -19,8 +19,8 @@ export async function middleware(request) {
     }
   }
 
-  // Moderator route protection
-  if (pathname.startsWith("/moderator")) {
+  // Moderator route protection (includes /visitor)
+  if (pathname.startsWith("/moderator") || pathname.startsWith("/visitor")) {
     const cookie = request.cookies.get("moderator-auth");
     if (!cookie?.value) {
       return NextResponse.redirect(new URL("/", request.url));
@@ -52,5 +52,5 @@ export async function middleware(request) {
 }
 
 export const config = {
-  matcher: ["/", "/admin", "/admin/:path*", "/moderator/:path*"],
+  matcher: ["/", "/admin", "/admin/:path*", "/moderator/:path*", "/visitor", "/visitor/:path*"],
 };
