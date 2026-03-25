@@ -568,11 +568,29 @@ export default function AdminHome() {
                   </td>
                   <td className={`${td} text-right font-mono`}>
                     <div>{fmt(totGameDisplay)}</div>
-                    {expenseGame > expenseWin && <div className="text-xs text-green-500 font-normal">(+{fmt(expenseGame - expenseWin)} exp)</div>}
+                    {expenseGame > expenseWin && (() => {
+                      const netG = expenseGame - expenseWin;
+                      const defG = defaultExpenseType === "game" ? defaultExpenseAmount : 0;
+                      const varG = netG - defG;
+                      return (
+                        <div className="text-xs text-green-500 font-normal">
+                          (+{fmt(netG)} exp{varG > 0 && defG > 0 ? ` / ${fmt(varG)} var` : ""})
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td className={`${td} text-right font-mono`}>
                     <div>{fmt(totWinDisplay)}</div>
-                    {expenseWin > expenseGame && <div className="text-xs text-red-400 font-normal">(+{fmt(expenseWin - expenseGame)} exp)</div>}
+                    {expenseWin > expenseGame && (() => {
+                      const netW = expenseWin - expenseGame;
+                      const defW = defaultExpenseType === "win" ? defaultExpenseAmount : 0;
+                      const varW = netW - defW;
+                      return (
+                        <div className="text-xs text-red-400 font-normal">
+                          (+{fmt(netW)} exp{varW > 0 && defW > 0 ? ` / ${fmt(varW)} var` : ""})
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td
                     className={`${td} text-right font-mono font-bold ${adjustedGrandTag === "BANKER" ? "text-green-400" : "text-red-400"}`}>

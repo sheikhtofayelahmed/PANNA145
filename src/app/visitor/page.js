@@ -263,6 +263,8 @@ export default function VisitorPage() {
   const [expenseLabelWin, setExpenseLabelWin] = useState("LOST");
   const [expenseGame, setExpenseGame] = useState(0);
   const [expenseLabelGame, setExpenseLabelGame] = useState("GET");
+  const [defaultExpenseAmount, setDefaultExpenseAmount] = useState(0);
+  const [defaultExpenseType,   setDefaultExpenseType]   = useState("game");
 
   async function load() {
     try {
@@ -285,6 +287,8 @@ export default function VisitorPage() {
       setExpenseLabelWin(expenseJson.winLabel || "LOST");
       setExpenseGame(expenseJson.gameAmount ?? 0);
       setExpenseLabelGame(expenseJson.gameLabel || "GET");
+      setDefaultExpenseAmount(expenseJson.defaultAmount || 0);
+      setDefaultExpenseType(expenseJson.defaultType || "game");
       const map = {};
       (agentJson.agents || []).forEach((a) => {
         map[a.agentId] = a;
@@ -593,11 +597,29 @@ export default function VisitorPage() {
                   </td>
                   <td className={`${std} text-right font-mono`}>
                     <div>{fmt(totGameDisplay)}</div>
-                    {expenseGame > expenseWin && <div className="text-xs text-green-600 font-normal">(+{fmt(expenseGame - expenseWin)} exp)</div>}
+                    {expenseGame > expenseWin && (() => {
+                      const netG = expenseGame - expenseWin;
+                      const defG = defaultExpenseType === "game" ? defaultExpenseAmount : 0;
+                      const varG = netG - defG;
+                      return (
+                        <div className="text-xs text-green-600 font-normal">
+                          (+{fmt(netG)} exp{varG > 0 && defG > 0 ? ` / ${fmt(varG)} var` : ""})
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td className={`${std} text-right font-mono`}>
                     <div>{fmt(totWinDisplay)}</div>
-                    {expenseWin > expenseGame && <div className="text-xs text-red-500 font-normal">(+{fmt(expenseWin - expenseGame)} exp)</div>}
+                    {expenseWin > expenseGame && (() => {
+                      const netW = expenseWin - expenseGame;
+                      const defW = defaultExpenseType === "win" ? defaultExpenseAmount : 0;
+                      const varW = netW - defW;
+                      return (
+                        <div className="text-xs text-red-500 font-normal">
+                          (+{fmt(netW)} exp{varW > 0 && defW > 0 ? ` / ${fmt(varW)} var` : ""})
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td
                     className={`${std} text-right font-mono font-bold ${adjustedGrandTag === "BANKER" ? "text-green-700" : "text-red-600"}`}>
