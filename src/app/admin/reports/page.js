@@ -79,31 +79,42 @@ const td = "border border-gray-700 px-3 py-2 text-sm font-mono";
 
 function StatsTable({ rows, labelCol }) {
   if (!rows.length) return <p className="text-gray-600 text-sm py-6 text-center">No data yet.</p>;
+
+  // Grand totals for tfoot
+  const tot = rows.reduce((s, r) => ({
+    totalGame:   s.totalGame   + r.totalGame,
+    totalWin:    s.totalWin    + r.totalWin,
+    expenseNet:  s.expenseNet  + (r.expenseGame - r.expenseWin),
+    netPL:       s.netPL       + r.netPL,
+    sessions:    s.sessions    + r.sessions,
+  }), { totalGame: 0, totalWin: 0, expenseNet: 0, netPL: 0, sessions: 0 });
+
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse" style={{ minWidth: "560px" }}>
+      <table className="w-full border-collapse" style={{ minWidth: "500px" }}>
         <thead>
           <tr>
             <th className={`${th} text-left`}>{labelCol}</th>
             <th className={th}>Sessions</th>
             <th className={th}>Total Game</th>
             <th className={th}>Total Win</th>
-            <th className={th}>GET (Exp)</th>
-            <th className={th}>LOST (Exp)</th>
-            <th className={th}>Net P/L</th>
+            <th className={th}>GET − LOST</th>
+            <th className={th}>P / L</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r, i) => {
             const tag = r.netPL >= 0 ? "BANKER" : "AGENT";
+            const expNet = r.expenseGame - r.expenseWin;
             return (
               <tr key={i} className="hover:bg-gray-900/40">
                 <td className={`${td} text-left text-gray-200`}>{r.label}</td>
                 <td className={`${td} text-center text-gray-500`}>{r.sessions}</td>
                 <td className={`${td} text-right text-gray-300`}>{fmt(r.totalGame)}</td>
                 <td className={`${td} text-right text-gray-300`}>{fmt(r.totalWin)}</td>
-                <td className={`${td} text-right text-green-400`}>{r.expenseGame ? fmt(r.expenseGame) : "—"}</td>
-                <td className={`${td} text-right text-red-400`}>{r.expenseWin ? fmt(r.expenseWin) : "—"}</td>
+                <td className={`${td} text-right ${expNet > 0 ? "text-green-400" : expNet < 0 ? "text-red-400" : "text-gray-600"}`}>
+                  {expNet !== 0 ? (expNet > 0 ? "+" : "−") + fmt(Math.abs(expNet)) : "—"}
+                </td>
                 <td className={`${td} text-right font-bold ${tag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
                   {fmt(Math.abs(r.netPL))}
                   <span className="ml-1 text-xs font-normal opacity-60">{tag}</span>
@@ -112,6 +123,23 @@ function StatsTable({ rows, labelCol }) {
             );
           })}
         </tbody>
+        {rows.length > 1 && (
+          <tfoot>
+            <tr className="border-t-2 border-gray-600 bg-gray-900 font-bold">
+              <td className={`${td} text-left text-gray-400 text-xs uppercase tracking-wider`}>Total</td>
+              <td className={`${td} text-center text-gray-400`}>{tot.sessions}</td>
+              <td className={`${td} text-right text-white`}>{fmt(tot.totalGame)}</td>
+              <td className={`${td} text-right text-white`}>{fmt(tot.totalWin)}</td>
+              <td className={`${td} text-right ${tot.expenseNet > 0 ? "text-green-400" : tot.expenseNet < 0 ? "text-red-400" : "text-gray-600"}`}>
+                {tot.expenseNet !== 0 ? (tot.expenseNet > 0 ? "+" : "−") + fmt(Math.abs(tot.expenseNet)) : "—"}
+              </td>
+              <td className={`${td} text-right font-bold ${tot.netPL >= 0 ? "text-green-400" : "text-red-400"}`}>
+                {fmt(Math.abs(tot.netPL))}
+                <span className="ml-1 text-xs font-normal opacity-60">{tot.netPL >= 0 ? "BANKER" : "AGENT"}</span>
+              </td>
+            </tr>
+          </tfoot>
+        )}
       </table>
     </div>
   );
