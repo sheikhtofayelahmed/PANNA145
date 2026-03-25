@@ -8,6 +8,7 @@ const navLinks = [
   { href: "/admin/moderator",  label: "Moderators" },
   { href: "/admin/agents",     label: "Agents"     },
   { href: "/admin/game-names", label: "Game Names" },
+  { href: "/admin/reports",    label: "Reports"    },
 ];
 
 export default function AdminLayout({ children }) {
