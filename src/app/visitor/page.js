@@ -583,35 +583,6 @@ export default function VisitorPage() {
                     </td>
                   </tr>
                 ))}
-                {(expenseGame !== 0 || expenseWin !== 0) &&
-                  (() => {
-                    const netExp = expenseGame - expenseWin;
-                    if (netExp === 0) return null;
-                    const label =
-                      expenseGame !== 0 && expenseWin !== 0
-                        ? "Expense"
-                        : expenseGame !== 0
-                          ? expenseLabelGame
-                          : expenseLabelWin;
-                    return (
-                      <tr className="hover:bg-gray-50">
-                        <td className={`${std}`}></td>
-                        <td className={`${std} text-gray-400 italic`}>
-                          {label}
-                        </td>
-                        <td
-                          className={`${std} text-right font-mono ${netExp > 0 ? "text-green-700" : ""}`}>
-                          {netExp > 0 ? fmt(netExp) : ""}
-                        </td>
-                        <td
-                          className={`${std} text-right font-mono ${netExp < 0 ? "text-red-600" : ""}`}>
-                          {netExp < 0 ? fmt(-netExp) : ""}
-                        </td>
-                        <td className={`${std}`}></td>
-                        <td className={`${std}`}></td>
-                      </tr>
-                    );
-                  })()}
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-gray-400 bg-gray-50 font-bold">
@@ -621,10 +592,12 @@ export default function VisitorPage() {
                     Total
                   </td>
                   <td className={`${std} text-right font-mono`}>
-                    {fmt(totGameDisplay)}
+                    <div>{fmt(totGameDisplay)}</div>
+                    {expenseGame > expenseWin && <div className="text-xs text-green-600 font-normal">(+{fmt(expenseGame - expenseWin)} exp)</div>}
                   </td>
                   <td className={`${std} text-right font-mono`}>
-                    {fmt(totWinDisplay)}
+                    <div>{fmt(totWinDisplay)}</div>
+                    {expenseWin > expenseGame && <div className="text-xs text-red-500 font-normal">(+{fmt(expenseWin - expenseGame)} exp)</div>}
                   </td>
                   <td
                     className={`${std} text-right font-mono font-bold ${adjustedGrandTag === "BANKER" ? "text-green-700" : "text-red-600"}`}>
