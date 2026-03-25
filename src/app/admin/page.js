@@ -558,40 +558,40 @@ export default function AdminHome() {
                     </td>
                   </tr>
                 ))}
+                {(expenseGame !== 0 || expenseWin !== 0) && (() => {
+                  const netExp = expenseGame - expenseWin;
+                  if (netExp === 0) return null;
+                  const label = expenseGame !== 0 && expenseWin !== 0 ? "Expense" : netExp > 0 ? expenseLabelGame : expenseLabelWin;
+                  const defG = defaultExpenseType === "game" ? defaultExpenseAmount : 0;
+                  const defW = defaultExpenseType === "win"  ? defaultExpenseAmount : 0;
+                  const varG = netExp > 0 ? netExp - defG : 0;
+                  const varW = netExp < 0 ? -netExp - defW : 0;
+                  return (
+                    <tr className="hover:bg-gray-900/40">
+                      <td className={`${td}`}></td>
+                      <td className={`${td} text-gray-400 italic`}>{label}</td>
+                      <td className={`${td} text-right font-mono ${netExp > 0 ? "text-green-400" : ""}`}>
+                        {netExp > 0 && (
+                          <div>{fmt(netExp)}{defG > 0 && varG > 0 && <span className="text-xs text-gray-500 ml-1">({fmt(varG)} var)</span>}</div>
+                        )}
+                      </td>
+                      <td className={`${td} text-right font-mono ${netExp < 0 ? "text-red-400" : ""}`}>
+                        {netExp < 0 && (
+                          <div>{fmt(-netExp)}{defW > 0 && varW > 0 && <span className="text-xs text-gray-500 ml-1">({fmt(varW)} var)</span>}</div>
+                        )}
+                      </td>
+                      <td className={`${td}`}></td>
+                      <td className={`${td}`}></td>
+                    </tr>
+                  );
+                })()}
               </tbody>
               <tfoot>
                 <tr className="bg-gray-900 border-t-2 border-gray-600 font-bold">
                   <td className={`${td}`}></td>
-                  <td
-                    className={`${td} text-xs uppercase tracking-wider text-gray-400`}>
-                    Total
-                  </td>
-                  <td className={`${td} text-right font-mono`}>
-                    <div>{fmt(totGameDisplay)}</div>
-                    {expenseGame > expenseWin && (() => {
-                      const netG = expenseGame - expenseWin;
-                      const defG = defaultExpenseType === "game" ? defaultExpenseAmount : 0;
-                      const varG = netG - defG;
-                      return (
-                        <div className="text-xs text-green-500 font-normal">
-                          (+{fmt(netG)} exp{varG > 0 && defG > 0 ? ` / ${fmt(varG)} var` : ""})
-                        </div>
-                      );
-                    })()}
-                  </td>
-                  <td className={`${td} text-right font-mono`}>
-                    <div>{fmt(totWinDisplay)}</div>
-                    {expenseWin > expenseGame && (() => {
-                      const netW = expenseWin - expenseGame;
-                      const defW = defaultExpenseType === "win" ? defaultExpenseAmount : 0;
-                      const varW = netW - defW;
-                      return (
-                        <div className="text-xs text-red-400 font-normal">
-                          (+{fmt(netW)} exp{varW > 0 && defW > 0 ? ` / ${fmt(varW)} var` : ""})
-                        </div>
-                      );
-                    })()}
-                  </td>
+                  <td className={`${td} text-xs uppercase tracking-wider text-gray-400`}>Total</td>
+                  <td className={`${td} text-right font-mono`}>{fmt(totGameDisplay)}</td>
+                  <td className={`${td} text-right font-mono`}>{fmt(totWinDisplay)}</td>
                   <td
                     className={`${td} text-right font-mono font-bold ${adjustedGrandTag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
                     {fmt(Math.abs(adjustedGrandPL))}
