@@ -181,7 +181,9 @@ export default function AdminHome() {
         body: JSON.stringify({
           date: saDate,
           rows: rows.map((r) => ({
+            agentId: r.agentId,
             agentName: r.agentName,
+            serial: r.serial,
             netGame: r.netGame,
             rawWin: r.rawWin,
             pl: r.pl,
