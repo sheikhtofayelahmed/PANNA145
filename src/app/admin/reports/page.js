@@ -95,7 +95,6 @@ function StatsTable({ rows, labelCol }) {
         <thead>
           <tr>
             <th className={`${th} text-left`}>{labelCol}</th>
-            <th className={th}>Sessions</th>
             <th className={th}>Total Game</th>
             <th className={th}>Total Win</th>
             <th className={th}>GET − LOST</th>
@@ -109,7 +108,6 @@ function StatsTable({ rows, labelCol }) {
             return (
               <tr key={i} className="hover:bg-gray-900/40">
                 <td className={`${td} text-left text-gray-200`}>{r.label}</td>
-                <td className={`${td} text-center text-gray-500`}>{r.sessions}</td>
                 <td className={`${td} text-right text-gray-300`}>{fmt(r.totalGame)}</td>
                 <td className={`${td} text-right text-gray-300`}>{fmt(r.totalWin)}</td>
                 <td className={`${td} text-right ${expNet > 0 ? "text-green-400" : expNet < 0 ? "text-red-400" : "text-gray-600"}`}>
@@ -127,7 +125,6 @@ function StatsTable({ rows, labelCol }) {
           <tfoot>
             <tr className="border-t-2 border-gray-600 bg-gray-900 font-bold">
               <td className={`${td} text-left text-gray-400 text-xs uppercase tracking-wider`}>Total</td>
-              <td className={`${td} text-center text-gray-400`}>{tot.sessions}</td>
               <td className={`${td} text-right text-white`}>{fmt(tot.totalGame)}</td>
               <td className={`${td} text-right text-white`}>{fmt(tot.totalWin)}</td>
               <td className={`${td} text-right ${tot.expenseNet > 0 ? "text-green-400" : tot.expenseNet < 0 ? "text-red-400" : "text-gray-600"}`}>
