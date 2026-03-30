@@ -145,12 +145,14 @@ function StatsTable({ rows, labelCol }) {
   );
 }
 
-// Build agent-filtered records: replace session totals with that agent's row data
-function filterByAgent(records, agentId) {
+// Use agentName as fallback key for old sessions that have no agentId
+function rowKey(row) { return row.agentId || row.agentName || ""; }
+
+function filterByAgent(records, key) {
   return records
-    .filter((r) => (r.rows || []).some((row) => row.agentId === agentId))
+    .filter((r) => (r.rows || []).some((row) => rowKey(row) === key))
     .map((r) => {
-      const row = r.rows.find((row) => row.agentId === agentId);
+      const row = r.rows.find((row) => rowKey(row) === key);
       return {
         ...r,
         grandGame:       row.netGame || 0,
@@ -167,7 +169,8 @@ export default function ReportsPage() {
   const [records, setRecords] = useState([]);
   const [tab, setTab] = useState("Overall");
   const [loading, setLoading] = useState(true);
-  const [selectedAgent, setSelectedAgent] = useState(null); // null = all
+  const [selectedAgent, setSelectedAgent] = useState(null);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     fetch("/api/summary-history")
@@ -176,17 +179,22 @@ export default function ReportsPage() {
       .catch(() => setLoading(false));
   }, []);
 
-  // Extract unique agents sorted by serial
+  // Extract unique agents — use agentName as fallback for old data
   const agentList = (() => {
     const map = new Map();
     for (const rec of records) {
       for (const row of (rec.rows || [])) {
-        if (row.agentId && !map.has(row.agentId))
-          map.set(row.agentId, { agentId: row.agentId, agentName: row.agentName || row.agentId, serial: row.serial ?? 999 });
+        const key = rowKey(row);
+        if (key && !map.has(key))
+          map.set(key, { key, agentName: row.agentName || key, serial: row.serial ?? 999 });
       }
     }
     return [...map.values()].sort((a, b) => a.serial - b.serial);
   })();
+
+  const filteredAgentList = search
+    ? agentList.filter((a) => a.agentName.toLowerCase().includes(search.toLowerCase()))
+    : agentList;
 
   const activeRecords = selectedAgent ? filterByAgent(records, selectedAgent) : records;
 
@@ -216,17 +224,24 @@ export default function ReportsPage() {
 
       {/* Agent filter */}
       {agentList.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-4">
-          <button onClick={() => setSelectedAgent(null)}
-            className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${!selectedAgent ? "bg-white text-black" : "bg-gray-900 text-gray-400 hover:text-white"}`}>
-            All
-          </button>
-          {agentList.map((a) => (
-            <button key={a.agentId} onClick={() => setSelectedAgent(selectedAgent === a.agentId ? null : a.agentId)}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${selectedAgent === a.agentId ? "bg-yellow-500 text-black" : "bg-gray-900 text-gray-400 hover:text-white"}`}>
-              {a.agentName}
+        <div className="mb-4 bg-gray-900 border border-gray-800 rounded-xl p-3 space-y-2">
+          <input
+            value={search} onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search agent..."
+            className="w-full px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-xs focus:outline-none placeholder-gray-600"
+          />
+          <div className="flex flex-wrap gap-1.5">
+            <button onClick={() => { setSelectedAgent(null); setSearch(""); }}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${!selectedAgent ? "bg-white text-black" : "bg-gray-800 text-gray-400 hover:text-white"}`}>
+              All
             </button>
-          ))}
+            {filteredAgentList.map((a) => (
+              <button key={a.key} onClick={() => setSelectedAgent(selectedAgent === a.key ? null : a.key)}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${selectedAgent === a.key ? "bg-yellow-500 text-black" : "bg-gray-800 text-gray-400 hover:text-white"}`}>
+                {a.agentName}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
