@@ -145,10 +145,29 @@ function StatsTable({ rows, labelCol }) {
   );
 }
 
+// Build agent-filtered records: replace session totals with that agent's row data
+function filterByAgent(records, agentId) {
+  return records
+    .filter((r) => (r.rows || []).some((row) => row.agentId === agentId))
+    .map((r) => {
+      const row = r.rows.find((row) => row.agentId === agentId);
+      return {
+        ...r,
+        grandGame:       row.netGame || 0,
+        grandWin:        row.rawWin  || 0,
+        grandPL:         row.pl      || 0,
+        adjustedGrandPL: row.pl      || 0,
+        expenseGame: 0,
+        expenseWin:  0,
+      };
+    });
+}
+
 export default function ReportsPage() {
   const [records, setRecords] = useState([]);
   const [tab, setTab] = useState("Overall");
   const [loading, setLoading] = useState(true);
+  const [selectedAgent, setSelectedAgent] = useState(null); // null = all
 
   useEffect(() => {
     fetch("/api/summary-history")
@@ -157,18 +176,30 @@ export default function ReportsPage() {
       .catch(() => setLoading(false));
   }, []);
 
-  const overall = records.length ? [{ label: "All Time", ...aggregate(records) }] : [];
-  const yearly  = groupBy(records, getYearKey);
-  const monthly = groupBy(records, getMonthKey, getMonthLabel);
-  const weekly  = groupBy(records, getWeekKey, (k) => {
-    const r = records.find((rec) => getWeekKey(rec.clearedAt) === k);
+  // Extract unique agents sorted by serial
+  const agentList = (() => {
+    const map = new Map();
+    for (const rec of records) {
+      for (const row of (rec.rows || [])) {
+        if (row.agentId && !map.has(row.agentId))
+          map.set(row.agentId, { agentId: row.agentId, agentName: row.agentName || row.agentId, serial: row.serial ?? 999 });
+      }
+    }
+    return [...map.values()].sort((a, b) => a.serial - b.serial);
+  })();
+
+  const activeRecords = selectedAgent ? filterByAgent(records, selectedAgent) : records;
+
+  const overall = activeRecords.length ? [{ label: "All Time", ...aggregate(activeRecords) }] : [];
+  const yearly  = groupBy(activeRecords, getYearKey);
+  const monthly = groupBy(activeRecords, getMonthKey, getMonthLabel);
+  const weekly  = groupBy(activeRecords, getWeekKey, (k) => {
+    const r = activeRecords.find((rec) => getWeekKey(rec.clearedAt) === k);
     return r ? getWeekLabel(r.clearedAt) : k;
   });
-
-  // Sessions view — individual records
-  const sessions = records.map((r) => ({
-    label: `${saudiDate(r.clearedAt)}`,
-    sessions: 1,
+  const sessions = activeRecords.map((r) => ({
+    label:       saudiDate(r.clearedAt),
+    sessions:    1,
     totalGame:   r.grandGame       || 0,
     totalWin:    r.grandWin        || 0,
     expenseGame: r.expenseGame     || 0,
@@ -176,28 +207,28 @@ export default function ReportsPage() {
     netPL:       r.adjustedGrandPL ?? r.grandPL ?? 0,
   }));
 
-  // Agents summary — aggregate per agent across all sessions
-  const agentMap = new Map();
-  for (const rec of records) {
-    for (const row of (rec.rows || [])) {
-      const id = row.agentId;
-      if (!id) continue;
-      if (!agentMap.has(id)) agentMap.set(id, { agentName: row.agentName || id, totalGame: 0, totalWin: 0, pl: 0, sessions: 0, serial: row.serial ?? 999 });
-      const a = agentMap.get(id);
-      a.totalGame += row.netGame || 0;
-      a.totalWin  += row.rawWin  || 0;
-      a.pl        += row.pl      || 0;
-      a.sessions  += 1;
-    }
-  }
-  const agentRows = [...agentMap.values()].sort((a, b) => a.serial - b.serial);
-
-  const tabData = { Overall: overall, Yearly: yearly, Monthly: monthly, Weekly: weekly, Sessions: sessions };
+  const tabData   = { Overall: overall, Yearly: yearly, Monthly: monthly, Weekly: weekly, Sessions: sessions };
   const labelCols = { Overall: "Period", Yearly: "Year", Monthly: "Month", Weekly: "Week", Sessions: "Date" };
 
   return (
     <div className="max-w-3xl mx-auto">
       <h1 className="text-white text-lg font-bold mb-4">Reports</h1>
+
+      {/* Agent filter */}
+      {agentList.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          <button onClick={() => setSelectedAgent(null)}
+            className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${!selectedAgent ? "bg-white text-black" : "bg-gray-900 text-gray-400 hover:text-white"}`}>
+            All
+          </button>
+          {agentList.map((a) => (
+            <button key={a.agentId} onClick={() => setSelectedAgent(selectedAgent === a.agentId ? null : a.agentId)}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${selectedAgent === a.agentId ? "bg-yellow-500 text-black" : "bg-gray-900 text-gray-400 hover:text-white"}`}>
+              {a.agentName}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 mb-4">
@@ -220,61 +251,6 @@ export default function ReportsPage() {
           <StatsTable rows={tabData[tab]} labelCol={labelCols[tab]} />
         )}
       </div>
-
-      {/* Agents Summary */}
-      {!loading && agentRows.length > 0 && (
-        <div className="mt-6 bg-gray-950 border border-gray-800 rounded-xl p-4">
-          <h2 className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-3">Agents</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse" style={{ minWidth: "420px" }}>
-              <thead>
-                <tr>
-                  <th className={`${th} text-left`}>Agent</th>
-                  <th className={th}>Sessions</th>
-                  <th className={th}>Total Game</th>
-                  <th className={th}>Total Win</th>
-                  <th className={th}>P / L</th>
-                </tr>
-              </thead>
-              <tbody>
-                {agentRows.map((a, i) => {
-                  const tag = a.pl >= 0 ? "BANKER" : "AGENT";
-                  return (
-                    <tr key={i} className="hover:bg-gray-900/40">
-                      <td className={`${td} text-left text-gray-200`}>{a.agentName}</td>
-                      <td className={`${td} text-center text-gray-500`}>{a.sessions}</td>
-                      <td className={`${td} text-right text-gray-300`}>{fmt(a.totalGame)}</td>
-                      <td className={`${td} text-right text-gray-300`}>{fmt(a.totalWin)}</td>
-                      <td className={`${td} text-right font-bold ${tag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
-                        {fmt(Math.abs(a.pl))}
-                        <span className="ml-1 text-xs font-normal opacity-60">{tag}</span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-              {agentRows.length > 1 && (() => {
-                const tot = agentRows.reduce((s, a) => ({ game: s.game + a.totalGame, win: s.win + a.totalWin, pl: s.pl + a.pl }), { game: 0, win: 0, pl: 0 });
-                const tag = tot.pl >= 0 ? "BANKER" : "AGENT";
-                return (
-                  <tfoot>
-                    <tr className="border-t-2 border-gray-600 bg-gray-900 font-bold">
-                      <td className={`${td} text-left text-gray-400 text-xs uppercase tracking-wider`}>Total</td>
-                      <td className={`${td}`}></td>
-                      <td className={`${td} text-right text-white`}>{fmt(tot.game)}</td>
-                      <td className={`${td} text-right text-white`}>{fmt(tot.win)}</td>
-                      <td className={`${td} text-right font-bold ${tag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
-                        {fmt(Math.abs(tot.pl))}
-                        <span className="ml-1 text-xs font-normal opacity-60">{tag}</span>
-                      </td>
-                    </tr>
-                  </tfoot>
-                );
-              })()}
-            </table>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
