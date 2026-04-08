@@ -518,6 +518,7 @@ export default function AdminHome() {
           No data yet
         </p>
       ) : (
+        <>
         {/* Agent filter */}
         {rows.length > 1 && (
           <div className="flex flex-wrap gap-1.5 mb-3">
@@ -629,6 +630,7 @@ export default function AdminHome() {
             </table>
           </div>
         </div>
+        </>
       )}
 
       {/* Expense — multi-entry */}
