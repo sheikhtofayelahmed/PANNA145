@@ -1,24 +1,18 @@
 "use client";
 import { useEffect, useState } from "react";
 
+// Preview only — win discount NOT applied per entry (only on overall total)
 function calcRow(row, agent) {
   const gameDisc = (agent?.gameDiscount || 0) / 100;
-  const winDisc = (agent?.winDiscount || 0) / 100;
-
   const rawGame = row.totalGame || 0;
   const rawWin =
     (row.totalWin?.panna || 0) * 145 +
     (row.totalWin?.single || 0) * 9 +
     (row.totalWin?.jodi || 0) * 80;
-
   const netGame = rawGame * (1 - gameDisc);
-  const applyWinDisc = winDisc > 0 && rawWin < rawGame;
-  const initialPL = netGame - rawWin;
-  // Win discount reduces P/L only — Total Win stays as rawWin
-  const pl = applyWinDisc ? initialPL * (1 - winDisc) : initialPL;
+  const pl = netGame - rawWin;
   const tag = pl >= 0 ? "BANKER" : "AGENT";
-
-  return { rawGame, rawWin, netGame, pl, tag, applyWinDisc };
+  return { rawGame, rawWin, netGame, pl, tag };
 }
 
 function fmt(n) { return Math.round(n).toLocaleString(); }
@@ -268,7 +262,7 @@ export default function VisitorGameEntry({ moderatorId = "" }) {
               <div className={`font-mono font-bold ${preview.tag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
                 {fmt(Math.abs(preview.pl))} <span className="text-xs">{preview.tag}</span>
               </div>
-              {preview.applyWinDisc && <div className="text-xs text-blue-400">W.disc</div>}
+              <div className="text-xs text-gray-600">preview only</div>
             </div>
           </div>
         )}

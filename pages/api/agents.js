@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "POST") {
-    const { agentId, name, gameDiscount, winDiscount, password } = req.body;
+    const { agentId, name, gameDiscount, winDiscount, extraWin, password } = req.body;
     if (!agentId?.trim() || !name?.trim())
       return res.status(400).json({ error: "Agent ID and name required" });
 
@@ -24,6 +24,7 @@ export default async function handler(req, res) {
       name: name.trim(),
       gameDiscount: Number(gameDiscount || 0),
       winDiscount: Number(winDiscount || 0),
+      extraWin: Number(extraWin || 0),
       serial: count + 1,
       showExtraGames: false,
       ...(password ? { password } : {}),
@@ -32,13 +33,14 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "PUT") {
-    const { agentId, name, gameDiscount, winDiscount, serial, showExtraGames, password } = req.body;
+    const { agentId, name, gameDiscount, winDiscount, extraWin, serial, showExtraGames, password } = req.body;
     if (!agentId) return res.status(400).json({ error: "agentId required" });
 
     const update = {};
     if (name?.trim()) update.name = name.trim();
     if (gameDiscount !== undefined) update.gameDiscount = Number(gameDiscount);
     if (winDiscount !== undefined) update.winDiscount = Number(winDiscount);
+    if (extraWin !== undefined) update.extraWin = Number(extraWin || 0);
     if (serial !== undefined && serial !== "") update.serial = Number(serial);
     if (showExtraGames !== undefined) update.showExtraGames = Boolean(showExtraGames);
     if (password !== undefined) update.password = password;

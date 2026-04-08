@@ -130,6 +130,7 @@ export default function AdminHome() {
   const [data, setData] = useState([]);
   const [agentMap, setAgentMap] = useState({});
   const [loading, setLoading] = useState(true);
+  const [filterAgent, setFilterAgent] = useState(null);
   const [clearing, setClearing] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
   const [clearText, setClearText] = useState("");
@@ -302,10 +303,12 @@ export default function AdminHome() {
     .map(([agentId, g]) => {
       const agent = agentMap[agentId];
       const gameDisc = (agent?.gameDiscount || 0) / 100;
-      const winDisc = (agent?.winDiscount || 0) / 100;
+      const winDisc  = (agent?.winDiscount  || 0) / 100;
+      const extraWin = agent?.extraWin || 0;
+      const effectiveWin = g.rawTotWin + extraWin;
       const netGame = g.rawTotGame * (1 - gameDisc);
-      const applyWinDisc = winDisc > 0 && g.rawTotWin < g.rawTotGame;
-      const initialPL = netGame - g.rawTotWin;
+      const applyWinDisc = winDisc > 0 && effectiveWin < g.rawTotGame;
+      const initialPL = netGame - effectiveWin;
       const pl = applyWinDisc ? initialPL * (1 - winDisc) : initialPL;
       const winDiscAmount = applyWinDisc ? initialPL * winDisc : 0;
       const tag = pl >= 0 ? "BANKER" : "AGENT";
@@ -313,7 +316,7 @@ export default function AdminHome() {
         agentId,
         agentName: g.agentName,
         netGame,
-        rawWin: g.rawTotWin,
+        rawWin: effectiveWin,
         pl,
         tag,
         winDiscApplied: applyWinDisc,
@@ -515,6 +518,22 @@ export default function AdminHome() {
           No data yet
         </p>
       ) : (
+        {/* Agent filter */}
+        {rows.length > 1 && (
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            <button onClick={() => setFilterAgent(null)}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${!filterAgent ? "bg-white text-black" : "bg-gray-900 text-gray-400 hover:text-white"}`}>
+              All
+            </button>
+            {rows.map((r) => (
+              <button key={r.agentId} onClick={() => setFilterAgent(filterAgent === r.agentId ? null : r.agentId)}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${filterAgent === r.agentId ? "bg-yellow-500 text-black" : "bg-gray-900 text-gray-400 hover:text-white"}`}>
+                {r.agentName}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div ref={tableRef} className="bg-gray-950 rounded-lg p-2">
           <div className="overflow-x-auto">
             <table

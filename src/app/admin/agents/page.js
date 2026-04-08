@@ -42,12 +42,14 @@ export default function AdminAgentsPage() {
   const [newGameDiscount, setNewGameDiscount] = useState("");
   const [newWinDiscount, setNewWinDiscount] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [newExtraWin, setNewExtraWin] = useState("");
   const [adding, setAdding] = useState(false);
 
   const [editId, setEditId] = useState(null);
   const [editName, setEditName] = useState("");
   const [editGameDiscount, setEditGameDiscount] = useState("");
   const [editWinDiscount, setEditWinDiscount] = useState("");
+  const [editExtraWin, setEditExtraWin] = useState("");
   const [editShowExtraGames, setEditShowExtraGames] = useState(false);
   const [editPassword, setEditPassword] = useState("");
   const [saving, setSaving] = useState(false);
@@ -74,12 +76,12 @@ export default function AdminAgentsPage() {
     const res = await fetch("/api/agents", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ agentId: newId, name: newName, gameDiscount: newGameDiscount, winDiscount: newWinDiscount, password: newPassword }),
+      body: JSON.stringify({ agentId: newId, name: newName, gameDiscount: newGameDiscount, winDiscount: newWinDiscount, extraWin: newExtraWin, password: newPassword }),
     });
     const data = await res.json();
     if (res.ok) {
       flash("success", "Agent created");
-      setNewId(""); setNewName(""); setNewGameDiscount(""); setNewWinDiscount(""); setNewPassword("");
+      setNewId(""); setNewName(""); setNewGameDiscount(""); setNewWinDiscount(""); setNewExtraWin(""); setNewPassword("");
       load();
     } else {
       flash("error", data.error);
@@ -92,6 +94,7 @@ export default function AdminAgentsPage() {
     setEditName(agent.name || "");
     setEditGameDiscount(agent.gameDiscount ?? "");
     setEditWinDiscount(agent.winDiscount ?? "");
+    setEditExtraWin(agent.extraWin ?? "");
     setEditShowExtraGames(agent.showExtraGames ?? false);
     setEditPassword(agent.password || "");
   }
@@ -121,7 +124,7 @@ export default function AdminAgentsPage() {
     const res = await fetch("/api/agents", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ agentId, name: editName, gameDiscount: editGameDiscount, winDiscount: editWinDiscount, showExtraGames: editShowExtraGames, password: editPassword }),
+      body: JSON.stringify({ agentId, name: editName, gameDiscount: editGameDiscount, winDiscount: editWinDiscount, extraWin: editExtraWin, showExtraGames: editShowExtraGames, password: editPassword }),
     });
     if (res.ok) { flash("success", "Updated"); setEditId(null); load(); }
     else flash("error", "Update failed");
@@ -184,9 +187,14 @@ export default function AdminAgentsPage() {
             <input type="number" min="0" max="100" value={newWinDiscount} onChange={(e) => setNewWinDiscount(e.target.value)} placeholder="0"
               className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-yellow-500" />
           </div>
-          <div className="col-span-2">
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">Extra Win</label>
+            <input type="number" min="0" value={newExtraWin} onChange={(e) => setNewExtraWin(e.target.value)} placeholder="0"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-yellow-500" />
+          </div>
+          <div>
             <label className="block text-xs text-gray-400 mb-1">Login Password</label>
-            <input type="text" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Agent login password"
+            <input type="text" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Password"
               className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-yellow-500" />
           </div>
         </div>
@@ -229,6 +237,11 @@ export default function AdminAgentsPage() {
                       <input type="number" min="0" max="100" value={editWinDiscount} onChange={(e) => setEditWinDiscount(e.target.value)}
                         className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-yellow-500" />
                     </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Extra Win</label>
+                      <input type="number" min="0" value={editExtraWin} onChange={(e) => setEditExtraWin(e.target.value)} placeholder="0"
+                        className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-yellow-500" />
+                    </div>
                   </div>
                   <label className="flex items-center gap-2 cursor-pointer select-none">
                     <div
@@ -267,6 +280,7 @@ export default function AdminAgentsPage() {
                       <span className="text-xs text-gray-500">{agent.agentId}</span>
                       <span className="text-xs px-2 py-0.5 rounded bg-gray-800 text-gray-300">G: {agent.gameDiscount ?? 0}%</span>
                       <span className="text-xs px-2 py-0.5 rounded bg-gray-800 text-gray-300">W: {agent.winDiscount ?? 0}%</span>
+                      {(agent.extraWin > 0) && <span className="text-xs px-2 py-0.5 rounded bg-blue-900/50 text-blue-300">+{agent.extraWin} EW</span>}
                       {agent.showExtraGames && (
                         <span className="text-xs px-2 py-0.5 rounded bg-yellow-900/50 text-yellow-400 font-bold">+Extra</span>
                       )}

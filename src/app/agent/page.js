@@ -328,14 +328,16 @@ export default function AgentPage() {
             {gameData.length > 0 && (() => {
               const gameDisc = (agentInfo?.gameDiscount || 0) / 100;
               const winDisc  = (agentInfo?.winDiscount  || 0) / 100;
+              const extraWin = agentInfo?.extraWin || 0;
               const rawGame  = gameData.reduce((s, r) => s + (r.totalGame || 0), 0);
               const rawWin   = gameData.reduce((s, r) =>
                 s + (r.totalWin?.panna || 0) * 145
                   + (r.totalWin?.single || 0) * 9
                   + (r.totalWin?.jodi   || 0) * 80, 0);
+              const effectiveWin = rawWin + extraWin;
               const netGame  = rawGame * (1 - gameDisc);
-              const applyWinDisc = winDisc > 0 && rawWin < rawGame;
-              const initialPL = netGame - rawWin;
+              const applyWinDisc = winDisc > 0 && effectiveWin < rawGame;
+              const initialPL = netGame - effectiveWin;
               const pl = applyWinDisc ? initialPL * (1 - winDisc) : initialPL;
               const winDiscAmount = applyWinDisc ? initialPL * winDisc : 0;
               const tag = pl >= 0 ? "BANKER" : "AGENT";
@@ -371,7 +373,7 @@ export default function AgentPage() {
                         <td className={`${std} font-medium`}>{agentName}</td>
                         <td className={`${std} text-right font-mono`}>{fmt(netGame)}</td>
                         <td className={`${std} text-right`}>
-                          <div className="font-mono">{fmt(rawWin)}</div>
+                          <div className="font-mono">{fmt(effectiveWin)}</div>
                           {applyWinDisc && winDiscAmount > 0 && (
                             <div className="text-xs text-blue-500 font-mono">+{fmt(winDiscAmount)} W.disc</div>
                           )}
@@ -417,7 +419,7 @@ export default function AgentPage() {
                         <td className={`${std}`}></td>
                         <td className={`${std} text-xs uppercase tracking-wider text-gray-500`}>Total</td>
                         <td className={`${std} text-right font-mono`}>{fmt(netGame)}</td>
-                        <td className={`${std} text-right font-mono`}>{fmt(rawWin + winDiscAmount)}</td>
+                        <td className={`${std} text-right font-mono`}>{fmt(effectiveWin + winDiscAmount)}</td>
                         <td className={`${std} text-right font-mono font-bold ${finalTag === "BANKER" ? "text-green-700" : "text-red-600"}`}>
                           {fmt(Math.abs(finalPL))}
                         </td>
