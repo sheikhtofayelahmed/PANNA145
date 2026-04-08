@@ -339,7 +339,7 @@ export default function VisitorPage() {
       const extraWin = agent?.extraWin || 0;
       const effectiveWin = g.rawTotWin + extraWin;
       const netGame = g.rawTotGame * (1 - gameDisc);
-      const applyWinDisc = winDisc > 0 && effectiveWin < g.rawTotGame;
+      const applyWinDisc = winDisc > 0 && effectiveWin < netGame;
       const initialPL = netGame - effectiveWin;
       const pl = applyWinDisc ? initialPL * (1 - winDisc) : initialPL;
       const winDiscAmount = applyWinDisc ? initialPL * winDisc : 0;
@@ -786,7 +786,7 @@ function AgentTable({ agentId, agentName, rows, agent, gameNames }) {
   const rawTotWin = totPanna * 145 + totSingle * 9 + totJodi * 80;
   const effectiveTotWin = rawTotWin + extraWin;
   const totNetGame = rawTotGame * (1 - gameDisc);
-  const applyWinDisc = winDisc > 0 && effectiveTotWin < rawTotGame;
+  const applyWinDisc = winDisc > 0 && effectiveTotWin < totNetGame;
   const initialPL = totNetGame - effectiveTotWin;
   const totPL = applyWinDisc ? initialPL * (1 - winDisc) : initialPL;
   const winDiscAmount = applyWinDisc ? initialPL * winDisc : 0;

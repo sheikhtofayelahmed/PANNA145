@@ -307,7 +307,7 @@ export default function AdminHome() {
       const extraWin = agent?.extraWin || 0;
       const effectiveWin = g.rawTotWin + extraWin;
       const netGame = g.rawTotGame * (1 - gameDisc);
-      const applyWinDisc = winDisc > 0 && effectiveWin < g.rawTotGame;
+      const applyWinDisc = winDisc > 0 && effectiveWin < netGame;
       const initialPL = netGame - effectiveWin;
       const pl = applyWinDisc ? initialPL * (1 - winDisc) : initialPL;
       const winDiscAmount = applyWinDisc ? initialPL * winDisc : 0;

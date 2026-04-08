@@ -26,10 +26,12 @@ function AgentTable({ agentName, rows, agent, gameNames }) {
 
   const gameDisc = (agent?.gameDiscount || 0) / 100;
   const winDisc  = (agent?.winDiscount  || 0) / 100;
+  const extraWin = agent?.extraWin || 0;
   const rawTotWin  = totPanna * 145 + totSingle * 9 + totJodi * 80;
+  const effectiveTotWin = rawTotWin + extraWin;
   const totNetGame = rawTotGame * (1 - gameDisc);
-  const applyWinDisc = winDisc > 0 && rawTotWin < rawTotGame;
-  const initialPL  = totNetGame - rawTotWin;
+  const applyWinDisc = winDisc > 0 && effectiveTotWin < totNetGame;
+  const initialPL  = totNetGame - effectiveTotWin;
   const totPL      = applyWinDisc ? initialPL * (1 - winDisc) : initialPL;
   const winDiscAmount = applyWinDisc ? initialPL * winDisc : 0;
   const totTag = totPL >= 0 ? "BANKER" : "AGENT";
@@ -116,7 +118,7 @@ function AgentTable({ agentName, rows, agent, gameNames }) {
                           </div>
                           <div className="border-t border-gray-300 pt-2">
                             <div className="text-sm text-gray-400">Total Win</div>
-                            <div className="font-mono font-bold text-lg">{fmt(rawTotWin)}</div>
+                            <div className="font-mono font-bold text-lg">{fmt(effectiveTotWin)}</div>
                             {applyWinDisc && winDiscAmount > 0 && (
                               <div className="text-xs text-blue-500 font-mono">+{fmt(winDiscAmount)} W.disc</div>
                             )}
@@ -124,7 +126,7 @@ function AgentTable({ agentName, rows, agent, gameNames }) {
                           <div className="border-t border-gray-300 pt-2">
                             <div className="font-mono text-base text-gray-500 text-right pr-0.5">{fmt(totNetGame)}</div>
                             <div className="font-mono text-base text-gray-500 flex justify-between pr-0.5">
-                              <span>−</span><span>{fmt(rawTotWin + winDiscAmount)}</span>
+                              <span>−</span><span>{fmt(effectiveTotWin + winDiscAmount)}</span>
                             </div>
                             <div className="border-t-2 border-gray-700 mt-1 pt-1.5 text-center">
                               <div className={`font-black text-2xl ${totTag === "BANKER" ? "text-green-700" : "text-red-600"}`}>
