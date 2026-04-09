@@ -264,7 +264,7 @@ export default function VisitorPage() {
   const [expenseGame, setExpenseGame] = useState(0);
   const [expenseLabelGame, setExpenseLabelGame] = useState("GET");
   const [defaultExpenseAmount, setDefaultExpenseAmount] = useState(0);
-  const [defaultExpenseType,   setDefaultExpenseType]   = useState("game");
+  const [defaultExpenseType, setDefaultExpenseType] = useState("game");
 
   async function load() {
     try {
@@ -335,7 +335,7 @@ export default function VisitorPage() {
     .map(([agentId, g]) => {
       const agent = agentMap[agentId];
       const gameDisc = (agent?.gameDiscount || 0) / 100;
-      const winDisc  = (agent?.winDiscount  || 0) / 100;
+      const winDisc = (agent?.winDiscount || 0) / 100;
       const extraWin = agent?.extraWin || 0;
       const effectiveWin = g.rawTotWin + extraWin;
       const netGame = g.rawTotGame * (1 - gameDisc);
@@ -589,40 +589,73 @@ export default function VisitorPage() {
                     </td>
                   </tr>
                 ))}
-                {(expenseGame !== 0 || expenseWin !== 0) && (() => {
-                  const netExp = expenseGame - expenseWin;
-                  if (netExp === 0) return null;
-                  const label = expenseGame !== 0 && expenseWin !== 0 ? "Expense" : netExp > 0 ? expenseLabelGame : expenseLabelWin;
-                  const defG = defaultExpenseType === "game" ? defaultExpenseAmount : 0;
-                  const defW = defaultExpenseType === "win"  ? defaultExpenseAmount : 0;
-                  const varG = netExp > 0 ? netExp - defG : 0;
-                  const varW = netExp < 0 ? -netExp - defW : 0;
-                  return (
-                    <tr className="hover:bg-gray-50">
-                      <td className={`${std}`}></td>
-                      <td className={`${std} text-gray-400 italic`}>{label}</td>
-                      <td className={`${std} text-right font-mono ${netExp > 0 ? "text-green-700" : ""}`}>
-                        {netExp > 0 && (
-                          <div>{fmt(netExp)}{defG > 0 && varG > 0 && <span className="text-xs text-gray-400 ml-1">({fmt(varG)} var)</span>}</div>
-                        )}
-                      </td>
-                      <td className={`${std} text-right font-mono ${netExp < 0 ? "text-red-600" : ""}`}>
-                        {netExp < 0 && (
-                          <div>{fmt(-netExp)}{defW > 0 && varW > 0 && <span className="text-xs text-gray-400 ml-1">({fmt(varW)} var)</span>}</div>
-                        )}
-                      </td>
-                      <td className={`${std}`}></td>
-                      <td className={`${std}`}></td>
-                    </tr>
-                  );
-                })()}
+                {(expenseGame !== 0 || expenseWin !== 0) &&
+                  (() => {
+                    const netExp = expenseGame - expenseWin;
+                    if (netExp === 0) return null;
+                    const label =
+                      expenseGame !== 0 && expenseWin !== 0
+                        ? "Expense"
+                        : netExp > 0
+                          ? expenseLabelGame
+                          : expenseLabelWin;
+                    const defG =
+                      defaultExpenseType === "game" ? defaultExpenseAmount : 0;
+                    const defW =
+                      defaultExpenseType === "win" ? defaultExpenseAmount : 0;
+                    const varG = netExp > 0 ? netExp - defG : 0;
+                    const varW = netExp < 0 ? -netExp - defW : 0;
+                    return (
+                      <tr className="hover:bg-gray-50">
+                        <td className={`${std}`}></td>
+                        <td className={`${std} text-gray-400 italic`}>
+                          {label}
+                        </td>
+                        <td
+                          className={`${std} text-right font-mono ${netExp > 0 ? "text-green-700" : ""}`}>
+                          {netExp > 0 && (
+                            <div>
+                              {fmt(netExp)}
+                              {defG > 0 && varG > 0 && (
+                                <span className="text-xs text-gray-400 ml-1">
+                                  ({fmt(varG)} var)
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                        <td
+                          className={`${std} text-right font-mono ${netExp < 0 ? "text-red-600" : ""}`}>
+                          {netExp < 0 && (
+                            <div>
+                              {fmt(-netExp)}
+                              {defW > 0 && varW > 0 && (
+                                <span className="text-xs text-gray-400 ml-1">
+                                  ({fmt(varW)} var)
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                        <td className={`${std}`}></td>
+                        <td className={`${std}`}></td>
+                      </tr>
+                    );
+                  })()}
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-gray-400 bg-gray-50 font-bold">
                   <td className={`${std}`}></td>
-                  <td className={`${std} text-xs uppercase tracking-wider text-gray-500`}>Total</td>
-                  <td className={`${std} text-right font-mono`}>{fmt(totGameDisplay)}</td>
-                  <td className={`${std} text-right font-mono`}>{fmt(totWinDisplay)}</td>
+                  <td
+                    className={`${std} text-xs uppercase tracking-wider text-gray-500`}>
+                    Total
+                  </td>
+                  <td className={`${std} text-right font-mono`}>
+                    {fmt(totGameDisplay)}
+                  </td>
+                  <td className={`${std} text-right font-mono`}>
+                    {fmt(totWinDisplay)}
+                  </td>
                   <td
                     className={`${std} text-right font-mono font-bold ${adjustedGrandTag === "BANKER" ? "text-green-700" : "text-red-600"}`}>
                     {fmt(Math.abs(adjustedGrandPL))}
@@ -780,9 +813,9 @@ function AgentTable({ agentId, agentName, rows, agent, gameNames }) {
 
   const rawTotGame = dataRows.reduce((s, r) => s + (r.totalGame || 0), 0);
   // Compute win discount at AGENT AGGREGATE level (not per game row)
-  const gameDisc  = (agent?.gameDiscount || 0) / 100;
-  const winDisc   = (agent?.winDiscount  || 0) / 100;
-  const extraWin  = agent?.extraWin || 0;
+  const gameDisc = (agent?.gameDiscount || 0) / 100;
+  const winDisc = (agent?.winDiscount || 0) / 100;
+  const extraWin = agent?.extraWin || 0;
   const rawTotWin = totPanna * 145 + totSingle * 9 + totJodi * 80;
   const effectiveTotWin = rawTotWin + extraWin;
   const totNetGame = rawTotGame * (1 - gameDisc);
@@ -952,7 +985,9 @@ function AgentTable({ agentId, agentName, rows, agent, gameNames }) {
                             </div>
                             <div className="font-mono text-base text-gray-500 flex justify-between pr-0.5">
                               <span>−</span>
-                              <span>{fmt(effectiveTotWin + winDiscAmount)}</span>
+                              <span>
+                                {fmt(effectiveTotWin + winDiscAmount)}
+                              </span>
                             </div>
                             <div className="border-t-2 border-gray-700 mt-1 pt-1.5 text-center">
                               <div
