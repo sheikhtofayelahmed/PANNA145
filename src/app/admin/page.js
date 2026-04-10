@@ -112,11 +112,15 @@ function printSummary(
      
     </tfoot>
   </table>
-  ${expenseGame !== 0 || expenseWin !== 0 ? `
+  ${
+    expenseGame !== 0 || expenseWin !== 0
+      ? `
   <div style="margin-top:8px;font-size:11px;color:#555;">
     ${expenseGame !== 0 ? `<div><span style="color:#166534;font-family:monospace;font-weight:600;">GET ${fmt(expenseGame)}</span> — Received from other bookmakers (added to Game)</div>` : ""}
     ${expenseWin !== 0 ? `<div><span style="color:#991b1b;font-family:monospace;font-weight:600;">LOST ${fmt(expenseWin)}</span> — Paid to other bookmakers (added to Win)</div>` : ""}
-  </div>` : ""}
+  </div>`
+      : ""
+  }
   <script>window.onload = () => window.print();<\/script>
 </body>
 </html>`;
@@ -141,7 +145,7 @@ export default function AdminHome() {
   const [expenseLabelWin, setExpenseLabelWin] = useState("LOST");
   const [expenseLabelGame, setExpenseLabelGame] = useState("GET");
   const [defaultExpenseAmount, setDefaultExpenseAmount] = useState(0);
-  const [defaultExpenseType,   setDefaultExpenseType]   = useState("game");
+  const [defaultExpenseType, setDefaultExpenseType] = useState("game");
   const [addExpenseType, setAddExpenseType] = useState("game");
   const [addExpenseAmount, setAddExpenseAmount] = useState("");
   const [addExpenseNote, setAddExpenseNote] = useState("");
@@ -245,16 +249,23 @@ export default function AdminHome() {
   useEffect(() => {
     async function load() {
       try {
-        const [gameRes, agentRes, histRes, summaryRes, expenseRes, debtRes, lostRes] =
-          await Promise.all([
-            fetch("/api/visitor-game-data"),
-            fetch("/api/get-all-agents"),
-            fetch("/api/pl-history"),
-            fetch("/api/summary-history"),
-            fetch("/api/expense"),
-            fetch("/api/agent-debt"),
-            fetch("/api/agent-lost"),
-          ]);
+        const [
+          gameRes,
+          agentRes,
+          histRes,
+          summaryRes,
+          expenseRes,
+          debtRes,
+          lostRes,
+        ] = await Promise.all([
+          fetch("/api/visitor-game-data"),
+          fetch("/api/get-all-agents"),
+          fetch("/api/pl-history"),
+          fetch("/api/summary-history"),
+          fetch("/api/expense"),
+          fetch("/api/agent-debt"),
+          fetch("/api/agent-lost"),
+        ]);
         const gameJson = await gameRes.json();
         const agentJson = await agentRes.json();
         const histJson = await histRes.json();
@@ -303,13 +314,25 @@ export default function AdminHome() {
     .map(([agentId, g]) => {
       const agent = agentMap[agentId];
       const gameDisc = (agent?.gameDiscount || 0) / 100;
-      const winDisc  = (agent?.winDiscount  || 0) / 100;
+      const winDisc = (agent?.winDiscount || 0) / 100;
       const extraWin = agent?.extraWin || 0;
-      const effectiveWin = g.rawTotWin + extraWin;
       const netGame = g.rawTotGame * (1 - gameDisc);
-      const applyWinDisc = winDisc > 0 && effectiveWin < netGame;
-      const initialPL = netGame - effectiveWin;
-      const pl = applyWinDisc ? initialPL * (1 - winDisc) : initialPL;
+      // Step 1: work only with raw win
+      const applyWinDisc = winDisc > 0 && g.rawTotWin < netGame;
+
+      // Step 2: calculate PL BEFORE extra win
+      const initialPL = netGame - g.rawTotWin;
+
+      // Step 3: apply win discount
+      const discountedPL = applyWinDisc ? initialPL * (1 - winDisc) : initialPL;
+
+      // Step 4: NOW apply extra win
+      const pl = discountedPL - extraWin;
+
+      // Step 5: calculate effective win for display
+      const effectiveWin = g.rawTotWin + extraWin;
+
+      // Step 6: win discount amount (based ONLY on raw win)
       const winDiscAmount = applyWinDisc ? initialPL * winDisc : 0;
       const tag = pl >= 0 ? "BANKER" : "AGENT";
       return {
@@ -331,10 +354,16 @@ export default function AdminHome() {
   const grandPL = rows.reduce((s, r) => s + r.pl, 0);
   const grandTag = grandPL >= 0 ? "BANKER" : "AGENT";
   const totalWinDisc = rows.reduce((s, r) => s + r.winDiscAmount, 0);
-  const expenseGame = expenseEntries.filter((e) => e.type === "game").reduce((s, e) => s + e.amount, 0)
-    + (defaultExpenseType === "game" ? defaultExpenseAmount : 0);
-  const expenseWin = expenseEntries.filter((e) => e.type === "win").reduce((s, e) => s + e.amount, 0)
-    + (defaultExpenseType === "win" ? defaultExpenseAmount : 0);
+  const expenseGame =
+    expenseEntries
+      .filter((e) => e.type === "game")
+      .reduce((s, e) => s + e.amount, 0) +
+    (defaultExpenseType === "game" ? defaultExpenseAmount : 0);
+  const expenseWin =
+    expenseEntries
+      .filter((e) => e.type === "win")
+      .reduce((s, e) => s + e.amount, 0) +
+    (defaultExpenseType === "win" ? defaultExpenseAmount : 0);
   const totalLostAll = agentLostData.reduce((s, l) => s + (l.total || 0), 0);
   const netExp = expenseGame - expenseWin;
   const totGameDisplay = grandGame + (netExp > 0 ? netExp : 0);
@@ -415,11 +444,15 @@ export default function AdminHome() {
        
         </tfoot>
       </table>
-      ${expenseGame !== 0 || expenseWin !== 0 ? `
+      ${
+        expenseGame !== 0 || expenseWin !== 0
+          ? `
       <div style="margin-top:8px;font-size:11px;color:#555;">
         ${expenseGame !== 0 ? `<div><span style="color:#166534;font-family:monospace;font-weight:600;">GET ${fmt(expenseGame)}</span> — Received from other bookmakers (added to Game)</div>` : ""}
         ${expenseWin !== 0 ? `<div><span style="color:#991b1b;font-family:monospace;font-weight:600;">LOST ${fmt(expenseWin)}</span> — Paid to other bookmakers (added to Win)</div>` : ""}
-      </div>` : ""}`;
+      </div>`
+          : ""
+      }`;
 
     document.body.appendChild(el);
     try {
@@ -519,133 +552,180 @@ export default function AdminHome() {
         </p>
       ) : (
         <>
-        {/* Agent filter */}
-        {rows.length > 1 && (
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            <button onClick={() => setFilterAgent(null)}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${!filterAgent ? "bg-white text-black" : "bg-gray-900 text-gray-400 hover:text-white"}`}>
-              All
-            </button>
-            {rows.map((r) => (
-              <button key={r.agentId} onClick={() => setFilterAgent(filterAgent === r.agentId ? null : r.agentId)}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${filterAgent === r.agentId ? "bg-yellow-500 text-black" : "bg-gray-900 text-gray-400 hover:text-white"}`}>
-                {r.agentName}
+          {/* Agent filter */}
+          {rows.length > 1 && (
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              <button
+                onClick={() => setFilterAgent(null)}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${!filterAgent ? "bg-white text-black" : "bg-gray-900 text-gray-400 hover:text-white"}`}>
+                All
               </button>
-            ))}
-          </div>
-        )}
+              {rows.map((r) => (
+                <button
+                  key={r.agentId}
+                  onClick={() =>
+                    setFilterAgent(filterAgent === r.agentId ? null : r.agentId)
+                  }
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${filterAgent === r.agentId ? "bg-yellow-500 text-black" : "bg-gray-900 text-gray-400 hover:text-white"}`}>
+                  {r.agentName}
+                </button>
+              ))}
+            </div>
+          )}
 
-        <div ref={tableRef} className="bg-gray-950 rounded-lg p-2">
-          <div className="overflow-x-auto">
-            <table
-              className="w-full border-collapse"
-              style={{ minWidth: "420px" }}>
-              <thead>
-                <tr className="bg-gray-900">
-                  <th className={`${th} text-center w-8`}>#</th>
-                  <th className={`${th} text-left`}>Agent</th>
-                  <th className={`${th} text-right`}>Total Game</th>
-                  <th className={`${th} text-right`}>Total Win</th>
-                  <th className={`${th} text-right`}>P / L</th>
-                  <th className={`${th} text-center`}>Tag</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r, i) => (
-                  <tr key={r.agentId} className="hover:bg-gray-900/40">
-                    <td className={`${td} text-center text-gray-500 text-xs`}>
-                      {i + 1}
+          <div ref={tableRef} className="bg-gray-950 rounded-lg p-2">
+            <div className="overflow-x-auto">
+              <table
+                className="w-full border-collapse"
+                style={{ minWidth: "420px" }}>
+                <thead>
+                  <tr className="bg-gray-900">
+                    <th className={`${th} text-center w-8`}>#</th>
+                    <th className={`${th} text-left`}>Agent</th>
+                    <th className={`${th} text-right`}>Total Game</th>
+                    <th className={`${th} text-right`}>Total Win</th>
+                    <th className={`${th} text-right`}>P / L</th>
+                    <th className={`${th} text-center`}>Tag</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r, i) => (
+                    <tr key={r.agentId} className="hover:bg-gray-900/40">
+                      <td className={`${td} text-center text-gray-500 text-xs`}>
+                        {i + 1}
+                      </td>
+                      <td className={`${td} font-medium`}>{r.agentName}</td>
+                      <td className={`${td} text-right font-mono`}>
+                        {fmt(r.netGame)}
+                      </td>
+                      <td className={`${td} text-right`}>
+                        <div className="font-mono">{fmt(r.rawWin)}</div>
+                        {r.winDiscApplied && r.winDiscAmount > 0 && (
+                          <div className="text-xs text-blue-400 font-mono">
+                            +{fmt(r.winDiscAmount)} W.disc
+                          </div>
+                        )}
+                      </td>
+                      <td
+                        className={`${td} text-right font-mono font-bold ${r.tag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
+                        {fmt(Math.abs(r.pl))}
+                      </td>
+                      <td className={`${td} text-center`}>
+                        <span
+                          className={`text-xs font-bold px-2 py-0.5 rounded ${r.tag === "BANKER" ? "bg-green-900/50 text-green-400" : "bg-red-900/50 text-red-400"}`}>
+                          {r.tag}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {(expenseGame !== 0 || expenseWin !== 0) &&
+                    (() => {
+                      const netExp = expenseGame - expenseWin;
+                      if (netExp === 0) return null;
+                      const label =
+                        expenseGame !== 0 && expenseWin !== 0
+                          ? "Expense"
+                          : netExp > 0
+                            ? expenseLabelGame
+                            : expenseLabelWin;
+                      const defG =
+                        defaultExpenseType === "game"
+                          ? defaultExpenseAmount
+                          : 0;
+                      const defW =
+                        defaultExpenseType === "win" ? defaultExpenseAmount : 0;
+                      const varG = netExp > 0 ? netExp - defG : 0;
+                      const varW = netExp < 0 ? -netExp - defW : 0;
+                      return (
+                        <tr className="hover:bg-gray-900/40">
+                          <td className={`${td}`}></td>
+                          <td className={`${td} text-gray-400 italic`}>
+                            {label}
+                          </td>
+                          <td
+                            className={`${td} text-right font-mono ${netExp > 0 ? "text-green-400" : ""}`}>
+                            {netExp > 0 && (
+                              <div>
+                                {fmt(netExp)}
+                                {defG > 0 && varG > 0 && (
+                                  <span className="text-xs text-gray-500 ml-1">
+                                    ({fmt(varG)} var)
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                          <td
+                            className={`${td} text-right font-mono ${netExp < 0 ? "text-red-400" : ""}`}>
+                            {netExp < 0 && (
+                              <div>
+                                {fmt(-netExp)}
+                                {defW > 0 && varW > 0 && (
+                                  <span className="text-xs text-gray-500 ml-1">
+                                    ({fmt(varW)} var)
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                          <td className={`${td}`}></td>
+                          <td className={`${td}`}></td>
+                        </tr>
+                      );
+                    })()}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-gray-900 border-t-2 border-gray-600 font-bold">
+                    <td className={`${td}`}></td>
+                    <td
+                      className={`${td} text-xs uppercase tracking-wider text-gray-400`}>
+                      Total
                     </td>
-                    <td className={`${td} font-medium`}>{r.agentName}</td>
                     <td className={`${td} text-right font-mono`}>
-                      {fmt(r.netGame)}
+                      {fmt(totGameDisplay)}
                     </td>
-                    <td className={`${td} text-right`}>
-                      <div className="font-mono">{fmt(r.rawWin)}</div>
-                      {r.winDiscApplied && r.winDiscAmount > 0 && (
-                        <div className="text-xs text-blue-400 font-mono">
-                          +{fmt(r.winDiscAmount)} W.disc
-                        </div>
-                      )}
+                    <td className={`${td} text-right font-mono`}>
+                      {fmt(totWinDisplay)}
                     </td>
                     <td
-                      className={`${td} text-right font-mono font-bold ${r.tag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
-                      {fmt(Math.abs(r.pl))}
+                      className={`${td} text-right font-mono font-bold ${adjustedGrandTag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
+                      {fmt(Math.abs(adjustedGrandPL))}
                     </td>
                     <td className={`${td} text-center`}>
                       <span
-                        className={`text-xs font-bold px-2 py-0.5 rounded ${r.tag === "BANKER" ? "bg-green-900/50 text-green-400" : "bg-red-900/50 text-red-400"}`}>
-                        {r.tag}
+                        className={`text-xs font-bold px-2 py-0.5 rounded ${adjustedGrandTag === "BANKER" ? "bg-green-900/50 text-green-400" : "bg-red-900/50 text-red-400"}`}>
+                        {adjustedGrandTag}
                       </span>
                     </td>
                   </tr>
-                ))}
-                {(expenseGame !== 0 || expenseWin !== 0) && (() => {
-                  const netExp = expenseGame - expenseWin;
-                  if (netExp === 0) return null;
-                  const label = expenseGame !== 0 && expenseWin !== 0 ? "Expense" : netExp > 0 ? expenseLabelGame : expenseLabelWin;
-                  const defG = defaultExpenseType === "game" ? defaultExpenseAmount : 0;
-                  const defW = defaultExpenseType === "win"  ? defaultExpenseAmount : 0;
-                  const varG = netExp > 0 ? netExp - defG : 0;
-                  const varW = netExp < 0 ? -netExp - defW : 0;
-                  return (
-                    <tr className="hover:bg-gray-900/40">
-                      <td className={`${td}`}></td>
-                      <td className={`${td} text-gray-400 italic`}>{label}</td>
-                      <td className={`${td} text-right font-mono ${netExp > 0 ? "text-green-400" : ""}`}>
-                        {netExp > 0 && (
-                          <div>{fmt(netExp)}{defG > 0 && varG > 0 && <span className="text-xs text-gray-500 ml-1">({fmt(varG)} var)</span>}</div>
-                        )}
-                      </td>
-                      <td className={`${td} text-right font-mono ${netExp < 0 ? "text-red-400" : ""}`}>
-                        {netExp < 0 && (
-                          <div>{fmt(-netExp)}{defW > 0 && varW > 0 && <span className="text-xs text-gray-500 ml-1">({fmt(varW)} var)</span>}</div>
-                        )}
-                      </td>
-                      <td className={`${td}`}></td>
-                      <td className={`${td}`}></td>
-                    </tr>
-                  );
-                })()}
-              </tbody>
-              <tfoot>
-                <tr className="bg-gray-900 border-t-2 border-gray-600 font-bold">
-                  <td className={`${td}`}></td>
-                  <td className={`${td} text-xs uppercase tracking-wider text-gray-400`}>Total</td>
-                  <td className={`${td} text-right font-mono`}>{fmt(totGameDisplay)}</td>
-                  <td className={`${td} text-right font-mono`}>{fmt(totWinDisplay)}</td>
-                  <td
-                    className={`${td} text-right font-mono font-bold ${adjustedGrandTag === "BANKER" ? "text-green-400" : "text-red-400"}`}>
-                    {fmt(Math.abs(adjustedGrandPL))}
-                  </td>
-                  <td className={`${td} text-center`}>
-                    <span
-                      className={`text-xs font-bold px-2 py-0.5 rounded ${adjustedGrandTag === "BANKER" ? "bg-green-900/50 text-green-400" : "bg-red-900/50 text-red-400"}`}>
-                      {adjustedGrandTag}
-                    </span>
-                  </td>
-                </tr>
-              
-              </tfoot>
-            </table>
+                </tfoot>
+              </table>
+            </div>
           </div>
-        </div>
         </>
       )}
 
       {/* Expense — multi-entry */}
       <div className="mt-4 bg-gray-900 border border-gray-700 rounded-xl p-4 space-y-3">
-        <span className="text-xs text-gray-500 uppercase tracking-wider">Expense</span>
+        <span className="text-xs text-gray-500 uppercase tracking-wider">
+          Expense
+        </span>
 
         {/* Default daily expense */}
         {defaultExpenseAmount > 0 && (
           <div className="flex items-center justify-between bg-gray-800 border border-gray-700 rounded-lg px-3 py-2">
             <div>
-              <span className="text-xs text-yellow-400 font-semibold uppercase tracking-wider">Daily Default</span>
-              <span className="text-xs text-gray-500 ml-2">{defaultExpenseType === "game" ? "GET — Game" : "LOST — Win"}</span>
+              <span className="text-xs text-yellow-400 font-semibold uppercase tracking-wider">
+                Daily Default
+              </span>
+              <span className="text-xs text-gray-500 ml-2">
+                {defaultExpenseType === "game" ? "GET — Game" : "LOST — Win"}
+              </span>
             </div>
-            <span className={`font-mono font-bold ${defaultExpenseType === "game" ? "text-green-400" : "text-red-400"}`}>
-              {defaultExpenseType === "game" ? "+" : "−"}{fmt(defaultExpenseAmount)}
+            <span
+              className={`font-mono font-bold ${defaultExpenseType === "game" ? "text-green-400" : "text-red-400"}`}>
+              {defaultExpenseType === "game" ? "+" : "−"}
+              {fmt(defaultExpenseAmount)}
             </span>
           </div>
         )}
@@ -653,115 +733,197 @@ export default function AdminHome() {
         {/* GET entries */}
         {expenseEntries.filter((e) => e.type === "game").length > 0 && (
           <div className="space-y-1">
-            <div className="text-xs text-gray-600 uppercase tracking-wide">GET — Added to Game</div>
-            {expenseEntries.filter((e) => e.type === "game").map((e) => (
-              <div key={e.id} className="flex items-center justify-between text-sm bg-gray-800 rounded-lg px-3 py-1.5">
-                <span className="text-gray-400 text-xs">{e.note || expenseLabelGame}</span>
-                <span className="text-green-400 font-mono font-semibold">+{fmt(e.amount)}</span>
-              </div>
-            ))}
-            <div className="text-right text-xs text-green-400 font-mono font-bold pr-1">Total GET: +{fmt(expenseGame)}</div>
+            <div className="text-xs text-gray-600 uppercase tracking-wide">
+              GET — Added to Game
+            </div>
+            {expenseEntries
+              .filter((e) => e.type === "game")
+              .map((e) => (
+                <div
+                  key={e.id}
+                  className="flex items-center justify-between text-sm bg-gray-800 rounded-lg px-3 py-1.5">
+                  <span className="text-gray-400 text-xs">
+                    {e.note || expenseLabelGame}
+                  </span>
+                  <span className="text-green-400 font-mono font-semibold">
+                    +{fmt(e.amount)}
+                  </span>
+                </div>
+              ))}
+            <div className="text-right text-xs text-green-400 font-mono font-bold pr-1">
+              Total GET: +{fmt(expenseGame)}
+            </div>
           </div>
         )}
 
         {/* LOST entries */}
         {expenseEntries.filter((e) => e.type === "win").length > 0 && (
           <div className="space-y-1">
-            <div className="text-xs text-gray-600 uppercase tracking-wide">LOST — Added to Win</div>
-            {expenseEntries.filter((e) => e.type === "win").map((e) => (
-              <div key={e.id} className="flex items-center justify-between text-sm bg-gray-800 rounded-lg px-3 py-1.5">
-                <span className="text-gray-400 text-xs">{e.note || expenseLabelWin}</span>
-                <span className="text-red-400 font-mono font-semibold">−{fmt(e.amount)}</span>
-              </div>
-            ))}
-            <div className="text-right text-xs text-red-400 font-mono font-bold pr-1">Total LOST: −{fmt(expenseWin)}</div>
+            <div className="text-xs text-gray-600 uppercase tracking-wide">
+              LOST — Added to Win
+            </div>
+            {expenseEntries
+              .filter((e) => e.type === "win")
+              .map((e) => (
+                <div
+                  key={e.id}
+                  className="flex items-center justify-between text-sm bg-gray-800 rounded-lg px-3 py-1.5">
+                  <span className="text-gray-400 text-xs">
+                    {e.note || expenseLabelWin}
+                  </span>
+                  <span className="text-red-400 font-mono font-semibold">
+                    −{fmt(e.amount)}
+                  </span>
+                </div>
+              ))}
+            <div className="text-right text-xs text-red-400 font-mono font-bold pr-1">
+              Total LOST: −{fmt(expenseWin)}
+            </div>
           </div>
         )}
 
         {expenseEntries.length === 0 && (
-          <p className="text-xs text-gray-700 text-center py-1">No entries yet</p>
+          <p className="text-xs text-gray-700 text-center py-1">
+            No entries yet
+          </p>
         )}
       </div>
 
       {/* Debt Management */}
       <div className="mt-4 bg-gray-900 border border-gray-700 rounded-xl p-4 space-y-3">
-        <span className="text-xs text-gray-500 uppercase tracking-wider">Debt</span>
+        <span className="text-xs text-gray-500 uppercase tracking-wider">
+          Debt
+        </span>
 
         {/* Per-agent latest debt */}
-        {Object.keys(agentMap).length > 0 && (() => {
-          const agentIds = Object.keys(agentMap).sort(
-            (a, b) => (agentMap[a]?.serial ?? 999) - (agentMap[b]?.serial ?? 999)
-          );
-          const shown = agentIds.filter((id) => agentDebts.some((d) => d.agentId === id));
-          if (shown.length === 0) return <p className="text-xs text-gray-700 text-center py-1">No debt recorded</p>;
-          return (
-            <div className="space-y-1">
-              {shown.map((id) => {
-                const latest = agentDebts.find((d) => d.agentId === id);
-                if (!latest) return null;
-                return (
-                  <div key={id} className="flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2">
-                    <div>
-                      <span className="text-sm text-white font-semibold">{agentMap[id]?.name || id}</span>
-                      {latest.note && <span className="text-xs text-gray-600 ml-2 italic">{latest.note}</span>}
-                      <div className="text-xs text-gray-600">{new Date(latest.setAt).toLocaleString("en-GB", { timeZone: "Asia/Riyadh" })}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className={`font-mono font-bold ${latest.type === "banker_gets" ? "text-red-400" : "text-green-400"}`}>
-                        {fmt(latest.amount)}
+        {Object.keys(agentMap).length > 0 &&
+          (() => {
+            const agentIds = Object.keys(agentMap).sort(
+              (a, b) =>
+                (agentMap[a]?.serial ?? 999) - (agentMap[b]?.serial ?? 999),
+            );
+            const shown = agentIds.filter((id) =>
+              agentDebts.some((d) => d.agentId === id),
+            );
+            if (shown.length === 0)
+              return (
+                <p className="text-xs text-gray-700 text-center py-1">
+                  No debt recorded
+                </p>
+              );
+            return (
+              <div className="space-y-1">
+                {shown.map((id) => {
+                  const latest = agentDebts.find((d) => d.agentId === id);
+                  if (!latest) return null;
+                  return (
+                    <div
+                      key={id}
+                      className="flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2">
+                      <div>
+                        <span className="text-sm text-white font-semibold">
+                          {agentMap[id]?.name || id}
+                        </span>
+                        {latest.note && (
+                          <span className="text-xs text-gray-600 ml-2 italic">
+                            {latest.note}
+                          </span>
+                        )}
+                        <div className="text-xs text-gray-600">
+                          {new Date(latest.setAt).toLocaleString("en-GB", {
+                            timeZone: "Asia/Riyadh",
+                          })}
+                        </div>
                       </div>
-                      <div className={`text-xs ${latest.type === "banker_gets" ? "text-red-700" : "text-green-700"}`}>
-                        {latest.type === "banker_gets" ? "Agent owes" : "Banker owes"}
+                      <div className="text-right">
+                        <div
+                          className={`font-mono font-bold ${latest.type === "banker_gets" ? "text-red-400" : "text-green-400"}`}>
+                          {fmt(latest.amount)}
+                        </div>
+                        <div
+                          className={`text-xs ${latest.type === "banker_gets" ? "text-red-700" : "text-green-700"}`}>
+                          {latest.type === "banker_gets"
+                            ? "Agent owes"
+                            : "Banker owes"}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })()}
+                  );
+                })}
+              </div>
+            );
+          })()}
 
         {/* Add debt form */}
         <div className="border-t border-gray-800 pt-3 space-y-2">
-          <select value={debtAgentId} onChange={(e) => setDebtAgentId(e.target.value)}
+          <select
+            value={debtAgentId}
+            onChange={(e) => setDebtAgentId(e.target.value)}
             className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none">
             <option value="">Select Agent</option>
-            {Object.keys(agentMap).sort((a,b)=>(agentMap[a]?.serial??999)-(agentMap[b]?.serial??999)).map((id) => (
-              <option key={id} value={id}>{agentMap[id]?.name || id}</option>
-            ))}
+            {Object.keys(agentMap)
+              .sort(
+                (a, b) =>
+                  (agentMap[a]?.serial ?? 999) - (agentMap[b]?.serial ?? 999),
+              )
+              .map((id) => (
+                <option key={id} value={id}>
+                  {agentMap[id]?.name || id}
+                </option>
+              ))}
           </select>
           <div className="flex gap-2">
-            <button onClick={() => setDebtType("banker_gets")}
+            <button
+              onClick={() => setDebtType("banker_gets")}
               className={`flex-1 py-1.5 text-xs rounded-lg font-semibold transition ${debtType === "banker_gets" ? "bg-red-900 text-red-300 border border-red-700" : "bg-gray-800 text-gray-500 hover:text-gray-300"}`}>
               Agent Owes
             </button>
-            <button onClick={() => setDebtType("agent_gets")}
+            <button
+              onClick={() => setDebtType("agent_gets")}
               className={`flex-1 py-1.5 text-xs rounded-lg font-semibold transition ${debtType === "agent_gets" ? "bg-green-900 text-green-300 border border-green-700" : "bg-gray-800 text-gray-500 hover:text-gray-300"}`}>
               Banker Owes
             </button>
           </div>
-          <input type="number" min="0" value={debtAmount} onChange={(e) => setDebtAmount(e.target.value)}
+          <input
+            type="number"
+            min="0"
+            value={debtAmount}
+            onChange={(e) => setDebtAmount(e.target.value)}
             placeholder="Amount"
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none" />
-          <input type="text" value={debtNote} onChange={(e) => setDebtNote(e.target.value)}
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none"
+          />
+          <input
+            type="text"
+            value={debtNote}
+            onChange={(e) => setDebtNote(e.target.value)}
             placeholder="Note (optional)"
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none" />
-          <button disabled={debtSaving || !debtAgentId || !debtAmount}
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none"
+          />
+          <button
+            disabled={debtSaving || !debtAgentId || !debtAmount}
             onClick={async () => {
               setDebtSaving(true);
               try {
                 const res = await fetch("/api/agent-debt", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ agentId: debtAgentId, type: debtType, amount: Number(debtAmount), note: debtNote }),
+                  body: JSON.stringify({
+                    agentId: debtAgentId,
+                    type: debtType,
+                    amount: Number(debtAmount),
+                    note: debtNote,
+                  }),
                 });
                 if (res.ok) {
                   const updated = await fetch("/api/agent-debt");
                   const json = await updated.json();
                   setAgentDebts(json.debts || []);
-                  setDebtAmount(""); setDebtNote("");
+                  setDebtAmount("");
+                  setDebtNote("");
                 }
-              } finally { setDebtSaving(false); }
+              } finally {
+                setDebtSaving(false);
+              }
             }}
             className="w-full py-2 text-xs bg-white text-black font-bold rounded-lg hover:bg-gray-200 disabled:opacity-50 transition">
             {debtSaving ? "Saving..." : "Set Debt"}
@@ -772,68 +934,120 @@ export default function AdminHome() {
       {/* Lost / Unpaid Amount */}
       <div className="mt-4 bg-gray-900 border border-gray-700 rounded-xl p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs text-gray-500 uppercase tracking-wider">Unpaid (Lost)</span>
+          <span className="text-xs text-gray-500 uppercase tracking-wider">
+            Unpaid (Lost)
+          </span>
           {totalLostAll > 0 && (
-            <span className="text-xs text-orange-400 font-mono font-bold">−{fmt(totalLostAll)} from P/L</span>
+            <span className="text-xs text-orange-400 font-mono font-bold">
+              −{fmt(totalLostAll)} from P/L
+            </span>
           )}
         </div>
 
         {agentLostData.length > 0 && (
           <div className="space-y-1">
             {agentLostData.map((l) => (
-              <div key={l.agentId} className="flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2">
-                <span className="text-sm text-white">{agentMap[l.agentId]?.name || l.agentId}</span>
+              <div
+                key={l.agentId}
+                className="flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2">
+                <span className="text-sm text-white">
+                  {agentMap[l.agentId]?.name || l.agentId}
+                </span>
                 <div className="flex items-center gap-3">
-                  <span className="text-orange-400 font-mono font-bold">{fmt(l.total)}</span>
+                  <span className="text-orange-400 font-mono font-bold">
+                    {fmt(l.total)}
+                  </span>
                   <button
                     onClick={async () => {
-                      if (!confirm(`Clear all unpaid for ${agentMap[l.agentId]?.name || l.agentId}?`)) return;
-                      await fetch("/api/agent-lost", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ agentId: l.agentId, clearAgent: true }) });
+                      if (
+                        !confirm(
+                          `Clear all unpaid for ${agentMap[l.agentId]?.name || l.agentId}?`,
+                        )
+                      )
+                        return;
+                      await fetch("/api/agent-lost", {
+                        method: "DELETE",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          agentId: l.agentId,
+                          clearAgent: true,
+                        }),
+                      });
                       const updated = await fetch("/api/agent-lost");
                       const json = await updated.json();
                       setAgentLostData(json.lostData || []);
                     }}
-                    className="text-gray-600 hover:text-red-400 transition text-xs">clear</button>
+                    className="text-gray-600 hover:text-red-400 transition text-xs">
+                    clear
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         )}
         {agentLostData.length === 0 && (
-          <p className="text-xs text-gray-700 text-center py-1">No unpaid amounts</p>
+          <p className="text-xs text-gray-700 text-center py-1">
+            No unpaid amounts
+          </p>
         )}
 
         {/* Add lost form */}
         <div className="border-t border-gray-800 pt-3 space-y-2">
-          <select value={lostAgentId} onChange={(e) => setLostAgentId(e.target.value)}
+          <select
+            value={lostAgentId}
+            onChange={(e) => setLostAgentId(e.target.value)}
             className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none">
             <option value="">Select Agent</option>
-            {Object.keys(agentMap).sort((a,b)=>(agentMap[a]?.serial??999)-(agentMap[b]?.serial??999)).map((id) => (
-              <option key={id} value={id}>{agentMap[id]?.name || id}</option>
-            ))}
+            {Object.keys(agentMap)
+              .sort(
+                (a, b) =>
+                  (agentMap[a]?.serial ?? 999) - (agentMap[b]?.serial ?? 999),
+              )
+              .map((id) => (
+                <option key={id} value={id}>
+                  {agentMap[id]?.name || id}
+                </option>
+              ))}
           </select>
-          <input type="number" min="1" value={lostAmount} onChange={(e) => setLostAmount(e.target.value)}
+          <input
+            type="number"
+            min="1"
+            value={lostAmount}
+            onChange={(e) => setLostAmount(e.target.value)}
             placeholder="Amount (adds to existing)"
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none" />
-          <input type="text" value={lostNote} onChange={(e) => setLostNote(e.target.value)}
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none"
+          />
+          <input
+            type="text"
+            value={lostNote}
+            onChange={(e) => setLostNote(e.target.value)}
             placeholder="Note (optional)"
-            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none" />
-          <button disabled={lostSaving || !lostAgentId || !lostAmount}
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none"
+          />
+          <button
+            disabled={lostSaving || !lostAgentId || !lostAmount}
             onClick={async () => {
               setLostSaving(true);
               try {
                 const res = await fetch("/api/agent-lost", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ agentId: lostAgentId, amount: Number(lostAmount), note: lostNote }),
+                  body: JSON.stringify({
+                    agentId: lostAgentId,
+                    amount: Number(lostAmount),
+                    note: lostNote,
+                  }),
                 });
                 if (res.ok) {
                   const updated = await fetch("/api/agent-lost");
                   const json = await updated.json();
                   setAgentLostData(json.lostData || []);
-                  setLostAmount(""); setLostNote("");
+                  setLostAmount("");
+                  setLostNote("");
                 }
-              } finally { setLostSaving(false); }
+              } finally {
+                setLostSaving(false);
+              }
             }}
             className="w-full py-2 text-xs bg-white text-black font-bold rounded-lg hover:bg-gray-200 disabled:opacity-50 transition">
             {lostSaving ? "Adding..." : "Add Unpaid"}
@@ -907,7 +1121,9 @@ export default function AdminHome() {
                                   {fmt(r.netGame)}
                                 </td>
                                 <td className={`${td} text-right`}>
-                                  <div className="font-mono">{fmt(r.rawWin)}</div>
+                                  <div className="font-mono">
+                                    {fmt(r.rawWin)}
+                                  </div>
                                   {r.winDiscApplied && r.winDiscAmount > 0 && (
                                     <div className="text-xs text-blue-400 font-mono">
                                       +{fmt(r.winDiscAmount)} W.disc
@@ -972,14 +1188,22 @@ export default function AdminHome() {
                               <td className={`${td} text-right font-mono`}>
                                 {fmt(
                                   (snap.grandGame ?? 0) +
-                                    Math.max(0, (snap.expenseGame ?? 0) - (snap.expenseWin ?? 0)),
+                                    Math.max(
+                                      0,
+                                      (snap.expenseGame ?? 0) -
+                                        (snap.expenseWin ?? 0),
+                                    ),
                                 )}
                               </td>
                               <td className={`${td} text-right font-mono`}>
                                 {fmt(
                                   (snap.grandWin ?? 0) +
                                     (snap.totalWinDisc ?? 0) +
-                                    Math.max(0, (snap.expenseWin ?? 0) - (snap.expenseGame ?? 0)),
+                                    Math.max(
+                                      0,
+                                      (snap.expenseWin ?? 0) -
+                                        (snap.expenseGame ?? 0),
+                                    ),
                                 )}
                               </td>
                               <td
@@ -1000,13 +1224,21 @@ export default function AdminHome() {
                                 P/L ={" "}
                                 {fmt(
                                   (snap.grandGame ?? 0) +
-                                    Math.max(0, (snap.expenseGame ?? 0) - (snap.expenseWin ?? 0)),
+                                    Math.max(
+                                      0,
+                                      (snap.expenseGame ?? 0) -
+                                        (snap.expenseWin ?? 0),
+                                    ),
                                 )}{" "}
                                 &minus;{" "}
                                 {fmt(
                                   (snap.grandWin ?? 0) +
                                     (snap.totalWinDisc ?? 0) +
-                                    Math.max(0, (snap.expenseWin ?? 0) - (snap.expenseGame ?? 0)),
+                                    Math.max(
+                                      0,
+                                      (snap.expenseWin ?? 0) -
+                                        (snap.expenseGame ?? 0),
+                                    ),
                                 )}{" "}
                                 = {fmt(Math.abs(snapFinalPL))} {snapTag}
                               </td>
@@ -1032,31 +1264,37 @@ export default function AdminHome() {
           {previousPL !== 0 && (
             <div className="flex justify-between items-center text-sm">
               <span className="text-gray-400">Previous Sessions</span>
-              <span className={`font-mono font-bold ${previousPL >= 0 ? "text-green-400" : "text-red-400"}`}>
-                {fmt(Math.abs(previousPL))}{" "}{previousPL >= 0 ? "BANKER" : "AGENT"}
+              <span
+                className={`font-mono font-bold ${previousPL >= 0 ? "text-green-400" : "text-red-400"}`}>
+                {fmt(Math.abs(previousPL))}{" "}
+                {previousPL >= 0 ? "BANKER" : "AGENT"}
               </span>
             </div>
           )}
           {rows.length > 0 && (
             <div className="flex justify-between items-center text-sm">
               <span className="text-gray-400">Current Session</span>
-              <span className={`font-mono font-bold ${adjustedGrandPL >= 0 ? "text-green-400" : "text-red-400"}`}>
+              <span
+                className={`font-mono font-bold ${adjustedGrandPL >= 0 ? "text-green-400" : "text-red-400"}`}>
                 {fmt(Math.abs(adjustedGrandPL))} {adjustedGrandTag}
               </span>
             </div>
           )}
-          {previousPL !== 0 && rows.length > 0 && (() => {
-            const combined = previousPL + adjustedGrandPL;
-            const combinedTag = combined >= 0 ? "BANKER" : "AGENT";
-            return (
-              <div className="flex justify-between items-center pt-2 border-t border-gray-700 text-sm font-bold">
-                <span className="text-white">Grand Total</span>
-                <span className={`font-mono text-lg ${combined >= 0 ? "text-green-400" : "text-red-400"}`}>
-                  {fmt(Math.abs(combined))} {combinedTag}
-                </span>
-              </div>
-            );
-          })()}
+          {previousPL !== 0 &&
+            rows.length > 0 &&
+            (() => {
+              const combined = previousPL + adjustedGrandPL;
+              const combinedTag = combined >= 0 ? "BANKER" : "AGENT";
+              return (
+                <div className="flex justify-between items-center pt-2 border-t border-gray-700 text-sm font-bold">
+                  <span className="text-white">Grand Total</span>
+                  <span
+                    className={`font-mono text-lg ${combined >= 0 ? "text-green-400" : "text-red-400"}`}>
+                    {fmt(Math.abs(combined))} {combinedTag}
+                  </span>
+                </div>
+              );
+            })()}
         </div>
       )}
 
@@ -1065,14 +1303,18 @@ export default function AdminHome() {
         <div className="mt-4 px-1 space-y-0.5">
           {expenseGame !== 0 && (
             <div className="text-xs text-gray-500">
-              <span className="text-green-400 font-mono font-semibold">GET {fmt(expenseGame)}</span>
-              {" "}— Received from other bookmakers (added to Game)
+              <span className="text-green-400 font-mono font-semibold">
+                GET {fmt(expenseGame)}
+              </span>{" "}
+              — Received from other bookmakers (added to Game)
             </div>
           )}
           {expenseWin !== 0 && (
             <div className="text-xs text-gray-500">
-              <span className="text-red-400 font-mono font-semibold">LOST {fmt(expenseWin)}</span>
-              {" "}— Paid to other bookmakers (added to Win)
+              <span className="text-red-400 font-mono font-semibold">
+                LOST {fmt(expenseWin)}
+              </span>{" "}
+              — Paid to other bookmakers (added to Win)
             </div>
           )}
         </div>

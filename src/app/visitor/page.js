@@ -337,12 +337,26 @@ export default function VisitorPage() {
       const gameDisc = (agent?.gameDiscount || 0) / 100;
       const winDisc = (agent?.winDiscount || 0) / 100;
       const extraWin = agent?.extraWin || 0;
-      const effectiveWin = g.rawTotWin + extraWin;
       const netGame = g.rawTotGame * (1 - gameDisc);
-      const applyWinDisc = winDisc > 0 && effectiveWin < netGame;
-      const initialPL = netGame - effectiveWin;
-      const pl = applyWinDisc ? initialPL * (1 - winDisc) : initialPL;
+
+      // Step 1: work only with raw win
+      const applyWinDisc = winDisc > 0 && g.rawTotWin < netGame;
+
+      // Step 2: calculate PL BEFORE extra win
+      const initialPL = netGame - g.rawTotWin;
+
+      // Step 3: apply win discount
+      const discountedPL = applyWinDisc ? initialPL * (1 - winDisc) : initialPL;
+
+      // Step 4: NOW apply extra win
+      const pl = discountedPL - extraWin;
+
+      // Step 5: calculate effective win for display
+      const effectiveWin = g.rawTotWin + extraWin;
+
+      // Step 6: win discount amount (based ONLY on raw win)
       const winDiscAmount = applyWinDisc ? initialPL * winDisc : 0;
+
       const tag = pl >= 0 ? "BANKER" : "AGENT";
       return {
         agentId,
@@ -631,7 +645,7 @@ export default function VisitorPage() {
                               {fmt(-netExp)}
                               {defW > 0 && varW > 0 && (
                                 <span className="text-xs text-gray-400 ml-1">
-                                  ({fmt(varW)} var)
+                                  ({fmt(varW)} expense)
                                 </span>
                               )}
                             </div>
@@ -817,11 +831,24 @@ function AgentTable({ agentId, agentName, rows, agent, gameNames }) {
   const winDisc = (agent?.winDiscount || 0) / 100;
   const extraWin = agent?.extraWin || 0;
   const rawTotWin = totPanna * 145 + totSingle * 9 + totJodi * 80;
-  const effectiveTotWin = rawTotWin + extraWin;
   const totNetGame = rawTotGame * (1 - gameDisc);
-  const applyWinDisc = winDisc > 0 && effectiveTotWin < totNetGame;
-  const initialPL = totNetGame - effectiveTotWin;
-  const totPL = applyWinDisc ? initialPL * (1 - winDisc) : initialPL;
+
+  // Step 1: discount decision based on raw win only
+  const applyWinDisc = winDisc > 0 && rawTotWin < totNetGame;
+
+  // Step 2: PL before discount
+  const initialPL = totNetGame - rawTotWin;
+
+  // Step 3: apply discount
+  const discountedPL = applyWinDisc ? initialPL * (1 - winDisc) : initialPL;
+
+  // Step 4: apply extra win AFTER discount
+  const totPL = discountedPL - extraWin;
+
+  // Step 5: effective win (for display only)
+  const effectiveTotWin = rawTotWin + extraWin;
+
+  // Step 6: discount amount
   const winDiscAmount = applyWinDisc ? initialPL * winDisc : 0;
   const totTag = totPL >= 0 ? "BANKER" : "AGENT";
   const totNetWin = totNetGame - totPL; // for print reference
