@@ -175,8 +175,13 @@ function AgentTable({ agentName, rows, agent, gameNames }) {
                               Total Win
                             </div>
                             <div className="font-mono font-bold text-lg">
-                              {fmt(effectiveTotWin)}
+                              {fmt(rawTotWin)}
                             </div>
+                            {extraWin > 0 && (
+                              <div className="text-xs text-orange-500 font-mono">
+                                +{fmt(extraWin)} E.W
+                              </div>
+                            )}
                             {applyWinDisc && winDiscAmount > 0 && (
                               <div className="text-xs text-blue-500 font-mono">
                                 +{fmt(winDiscAmount)} W.disc

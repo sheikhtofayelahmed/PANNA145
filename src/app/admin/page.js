@@ -339,7 +339,8 @@ export default function AdminHome() {
         agentId,
         agentName: g.agentName,
         netGame,
-        rawWin: effectiveWin,
+        rawWin: g.rawTotWin,
+        extraWin,
         pl,
         tag,
         winDiscApplied: applyWinDisc,
@@ -350,7 +351,7 @@ export default function AdminHome() {
     .sort((a, b) => a.serial - b.serial);
 
   const grandGame = rows.reduce((s, r) => s + r.netGame, 0);
-  const grandWin = rows.reduce((s, r) => s + r.rawWin, 0);
+  const grandWin = rows.reduce((s, r) => s + r.rawWin + r.extraWin, 0);
   const grandPL = rows.reduce((s, r) => s + r.pl, 0);
   const grandTag = grandPL >= 0 ? "BANKER" : "AGENT";
   const totalWinDisc = rows.reduce((s, r) => s + r.winDiscAmount, 0);
@@ -600,6 +601,9 @@ export default function AdminHome() {
                       </td>
                       <td className={`${td} text-right`}>
                         <div className="font-mono">{fmt(r.rawWin)}</div>
+                        {r.extraWin > 0 && (
+                          <div className="text-xs text-orange-400 font-mono">+{fmt(r.extraWin)} E.W</div>
+                        )}
                         {r.winDiscApplied && r.winDiscAmount > 0 && (
                           <div className="text-xs text-blue-400 font-mono">
                             +{fmt(r.winDiscAmount)} W.disc
